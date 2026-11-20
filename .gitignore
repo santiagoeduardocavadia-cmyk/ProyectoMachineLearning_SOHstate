@@ -1,0 +1,26 @@
+# Python
+__pycache__/
+*.py[cod]
+.venv/
+venv/
+.pytest_cache/
+*.egg-info/
+
+# Datos crudos (se descargan con backend/scripts/prepare_dataset.py)
+backend/data/raw/*
+!backend/data/raw/.gitkeep
+
+# Experimentos generados localmente (solo se versiona el experimento de referencia)
+backend/experiments/*
+!backend/experiments/.gitkeep
+!backend/experiments/referencia_*/
+
+# Frontend (lo gestiona el frontend)
+node_modules/
+frontend/dist/
+
+# SO / IDE
+.DS_Store
+Thumbs.db
+.vscode/
+.idea/
