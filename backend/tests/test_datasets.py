@@ -87,6 +87,11 @@ def test_plantilla_y_metricas_csv(client, fast_experiment):
     r = client.post(f"/api/v1/experiments/{fast_experiment['id']}/predict/csv", files=files).json()
     assert r["metrics"]["n"] == 20 and r["predictions"][0]["actual"] is not None
 
+    # sin columna soh pero con capacity_ah: el SOH real se deriva de la capacidad
     files = {"file": ("b6.csv", sub.drop(columns=["soh"]).to_csv(index=False).encode(), "text/csv")}
+    r2 = client.post(f"/api/v1/experiments/{fast_experiment['id']}/predict/csv", files=files).json()
+    assert r2["metrics"]["n"] == 20 and abs(r2["metrics"]["mae"] - r["metrics"]["mae"]) < 1e-3
+
+    files = {"file": ("b6.csv", sub.drop(columns=["soh", "capacity_ah"]).to_csv(index=False).encode(), "text/csv")}
     r = client.post(f"/api/v1/experiments/{fast_experiment['id']}/predict/csv", files=files).json()
     assert r["metrics"] is None and any("no se calculan" in w for w in r["warnings"])

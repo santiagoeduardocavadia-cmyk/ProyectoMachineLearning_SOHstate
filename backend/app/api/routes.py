@@ -258,7 +258,11 @@ async def predict_csv(experiment_id: str, file: UploadFile = File(...)):
     actuals = None
     if target_col in df.columns and target_col not in non_numeric:
         actuals = [None if pd.isna(v) else float(v) for v in df[target_col]]
-    numeric = df.drop(columns=non_numeric).drop(columns=[target_col], errors="ignore")
+    elif target_col == "soh" and "capacity_ah" in df.columns and "capacity_ah" not in non_numeric:
+        # SOH real derivado de la capacidad medida, con la nominal del dataset del experimento
+        nominal = float(rec.get("dataset", {}).get("nominal_capacity_ah") or config.NOMINAL_CAPACITY_AH)
+        actuals = [None if pd.isna(v) else float(v) / nominal for v in df["capacity_ah"]]
+    numeric = df.drop(columns=non_numeric).drop(columns=[target_col, "capacity_ah"], errors="ignore")
     samples = [{k: (None if pd.isna(v) else float(v)) for k, v in row.items()} for row in numeric.to_dict("records")]
     result = inference.predict(experiment_id, samples=samples, actuals=actuals)
     if actuals is None:

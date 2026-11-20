@@ -59,6 +59,10 @@ y las características que tengas) en `POST /api/v1/datasets` desde `/docs`. Des
 de test de ese dataset. SOH y RUL se recalculan en el backend; los datasets subidos se guardan en `backend/data/uploads/`
 (no se versionan).
 
+**Usar el dataset de Kaggle** ([patrickfleith/nasa-battery-dataset](https://www.kaggle.com/datasets/patrickfleith/nasa-battery-dataset)):
+descarga y descomprime `cleaned_dataset/` y conviértelo al formato de subida con
+`python -m scripts.convert_kaggle RUTA/cleaned_dataset --batteries B0029 B0030 B0031 B0032 --out mis_baterias.csv`.
+
 Cada experimento queda guardado en `backend/experiments/<id>/`:
 `experiment.json` (configuración, métricas, importancias, versiones de librerías, huella del dataset),
 `predictions.csv` y `model.joblib`.
