@@ -1,18 +1,25 @@
 import React, { useState } from "react";
-import { post } from "./api";
+import { datasetPath, post, useApi } from "./api";
 import { ErrorBox, Heading, Load, targetName } from "./shared";
 
-function TrainingForm({ catalog, features }) {
+function TrainingForm({ catalog, features, dataset, legacy }) {
   const d = catalog.defaults;
   const [target, setTarget] = useState(d.target);
   const [modelKey, setModel] = useState(d.model_type);
-  const [holdout, setHoldout] = useState(d.test_batteries);
+  const [holdout, setHoldout] = useState(() => {
+    const ids = dataset.batteries.map((b) => b.battery_id);
+    const defaults = d.test_batteries.filter((id) => ids.includes(id));
+    return defaults.length ? defaults : ids.slice(0, 1);
+  });
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState(null);
   const model = catalog.models.find((m) => m.key === modelKey);
-  const eligible = catalog.batteries.filter(
-    (b) => target !== "rul" || b !== "B0007",
-  );
+  const eligible = dataset.batteries
+    .filter((b) => target !== "rul" || b.reaches_eol)
+    .map((b) => b.battery_id);
+  const excluded = dataset.batteries
+    .filter((b) => !b.reaches_eol)
+    .map((b) => b.battery_id);
   async function train(event) {
     event.preventDefault();
     const data = new FormData(event.currentTarget);
@@ -37,6 +44,7 @@ function TrainingForm({ catalog, features }) {
     const form = event.currentTarget;
     try {
       const result = await post("/experiments", {
+        ...(legacy ? {} : { dataset_id: dataset.id }),
         name: data.get("name").trim(),
         description: data.get("description").trim() || null,
         target,
@@ -134,9 +142,10 @@ function TrainingForm({ catalog, features }) {
           El entrenamiento utiliza las baterías restantes. Todos los ciclos de
           una celda pertenecen al mismo conjunto.
         </p>
-        {target === "rul" && (
+        {target === "rul" && excluded.length > 0 && (
           <p className="warnings">
-            B0007 se excluye porque su fin de vida no se observó.
+            Baterías excluidas por falta de fin de vida observado:{" "}
+            {excluded.join(", ")}.
           </p>
         )}
         <div className="checks">
@@ -181,17 +190,27 @@ function TrainingForm({ catalog, features }) {
     </form>
   );
 }
-export function Train({ models, features }) {
+export function Train({ dataset, selector, legacy }) {
+  const models = useApi("/models");
+  const features = useApi(datasetPath("/dataset/features", dataset.id));
   return (
     <>
       <Heading
         title="Entrenamiento"
         text="Configura un modelo y evalúalo con baterías reservadas para prueba."
       />
+      {selector}
       <Load query={models}>
         {(catalog) => (
           <Load query={features}>
-            {(f) => <TrainingForm catalog={catalog} features={f.features} />}
+            {(f) => (
+              <TrainingForm
+                catalog={catalog}
+                dataset={dataset}
+                legacy={legacy}
+                features={f.features.filter((feature) => feature.min != null)}
+              />
+            )}
           </Load>
         )}
       </Load>

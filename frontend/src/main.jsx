@@ -1,14 +1,16 @@
 import React, { useEffect, useState } from "react";
 import { createRoot } from "react-dom/client";
 import { Data } from "./Data";
+import { Datasets, DatasetSelector } from "./Datasets";
 import { Train } from "./Train";
 import { Detail, History } from "./Experiments";
-import { Heading } from "./shared";
-import { useApi } from "./api";
+import { Heading, Load } from "./shared";
+import { datasetPath, useApi } from "./api";
 import "./style.css";
 
 const pages = [
   ["datos", "Datos"],
+  ["cargar-datos", "Cargar datos"],
   ["entrenar", "Entrenamiento"],
   ["experimentos", "Experimentos"],
   ["metodologia", "Metodología"],
@@ -64,11 +66,18 @@ function App() {
   }, []);
   const [page, id] = hash.split("/");
   const active = page === "experimento" ? "experimentos" : page;
-  const health = useApi("/health"),
-    models = useApi("/models"),
-    features = useApi("/dataset/features");
+  const health = useApi("/health");
   const version = health.data?.api_version;
   const incompatible = version && version.split(".")[0] !== "1";
+  const legacy = version?.startsWith("1.0.");
+  const [selectedId, setSelectedId] = useState("nasa");
+  const catalog = useApi(
+    version && !incompatible
+      ? legacy
+        ? datasetPath("/dataset/summary", "nasa")
+        : "/datasets"
+      : null,
+  );
   const online = health.data?.status === "ok";
   return (
     <>
@@ -126,14 +135,61 @@ function App() {
           <div className="error" role="alert">
             Esta interfaz requiere la API v1. El servidor indica {version}.
           </div>
-        ) : page === "datos" ? (
-          <Data features={features} />
-        ) : page === "entrenar" ? (
-          <Train models={models} features={features} />
+        ) : page === "cargar-datos" ? (
+          legacy ? (
+            <p className="panel">
+              La carga de datasets requiere la API v1.1.0 o posterior.
+            </p>
+          ) : (
+            <Load query={health}>
+              {() => (
+                <Datasets
+                  catalog={catalog}
+                  onChange={(id) => {
+                    if (id) setSelectedId(id);
+                    catalog.retry();
+                  }}
+                />
+              )}
+            </Load>
+          )
+        ) : page === "datos" || page === "entrenar" ? (
+          <Load query={health.error ? health : catalog}>
+            {(data) => {
+              const datasets = legacy
+                ? [{ ...data, id: "nasa", name: "NASA" }]
+                : data.datasets;
+              const dataset =
+                datasets.find((d) => d.id === selectedId) ||
+                datasets.find((d) => d.id === "nasa") ||
+                datasets[0];
+              if (!dataset)
+                return (
+                  <p className="panel">Todavía no hay datasets disponibles.</p>
+                );
+              const selector = (
+                <DatasetSelector
+                  datasets={datasets}
+                  selected={dataset.id}
+                  onSelect={setSelectedId}
+                />
+              );
+              return page === "datos" ? (
+                <Data key={dataset.id} dataset={dataset} selector={selector} />
+              ) : (
+                <Train
+                  key={dataset.id}
+                  dataset={dataset}
+                  selector={selector}
+                  legacy={legacy}
+                />
+              );
+            }}
+          </Load>
         ) : page === "experimentos" ? (
           <History />
         ) : page === "experimento" && id ? (
-          <Detail key={id} id={id} models={models} features={features} />
+          <Detail key={id} id={id} />
         ) : page === "metodologia" ? (
           <Method />
         ) : (

@@ -21,9 +21,11 @@ npm run preview
 
 ## Recorrido
 
-- **Datos** muestra las curvas de degradación, el umbral de fin de vida, los ciclos paginados y el catálogo de variables.
-- **Entrenamiento** permite seleccionar objetivo, modelo, hiperparámetros, características y baterías de prueba. El servidor publica los modelos y sus límites.
+- **Cargar datos** (API v1.1.0 o posterior) ofrece una plantilla CSV, carga de datasets de hasta 20 MB, advertencias y borrado de los datasets propios. El archivo y el nombre son obligatorios. La capacidad nominal y el umbral de fin de vida son opcionales.
+- **Datos** muestra las curvas de degradación, el umbral de fin de vida, los ciclos paginados y las características del dataset seleccionado.
+- **Entrenamiento** permite elegir el dataset, objetivo, modelo, hiperparámetros, características con datos y baterías de prueba. Para RUL solo se ofrecen baterías con fin de vida observado.
 - **Experimentos** permite comparar modelos y abrir sus métricas, validación cruzada, gráficos e inferencia por batería, valores manuales o CSV. Desde el detalle también se puede descargar el modelo o borrar el experimento.
+- En **Inferencia**, los resultados incluyen MAE, RMSE, R², MAPE y número de muestras cuando la API devuelve métricas. Para comparar un CSV con las predicciones, incluye la columna del objetivo (`soh`, `rul` o `capacity_ah`).
 - **Metodología** explica la separación por batería, la línea base, la validación cruzada, la selección de variables y el caso de B0007.
 
 La coordinación entre ramas y el contrato de datos se describen en [CONTEXTO_CHATGPT.md](../CONTEXTO_CHATGPT.md). Las peticiones de cambios al contrato se documentan en `frontend/PETICIONES_API.md` cuando se necesitan.
