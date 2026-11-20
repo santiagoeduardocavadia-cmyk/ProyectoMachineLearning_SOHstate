@@ -1,0 +1,186 @@
+{
+  "id": "referencia_soh_ridge",
+  "name": "Referencia SOH - Ridge (test B0006)",
+  "description": "Comparación lineal: extrapola mejor que los árboles por debajo del SOH mínimo visto en entrenamiento.",
+  "created_at": "2026-11-20T18:12:28+00:00",
+  "status": "completed",
+  "config": {
+    "target": "soh",
+    "model_type": "ridge",
+    "hyperparameters": {
+      "alpha": 1.0
+    },
+    "features": [
+      "cycle",
+      "v_mean",
+      "v_std",
+      "time_to_3_8v",
+      "time_to_3_5v",
+      "v_at_500s",
+      "temp_max",
+      "time_to_temp_max",
+      "temp_rise",
+      "cc_charge_time",
+      "cv_charge_time",
+      "charge_temp_max",
+      "re_ohm",
+      "rct_ohm"
+    ],
+    "train_batteries": [
+      "B0005",
+      "B0007",
+      "B0018"
+    ],
+    "test_batteries": [
+      "B0006"
+    ],
+    "random_state": 42
+  },
+  "metrics": {
+    "train": {
+      "mae": 0.0016540871114229122,
+      "rmse": 0.002186111493688689,
+      "r2": 0.9993700717815573,
+      "mape_pct": 0.20387688802616216,
+      "n": 468
+    },
+    "test": {
+      "mae": 0.01952982444277867,
+      "rmse": 0.02000173914037458,
+      "r2": 0.9746570609382097,
+      "mape_pct": 2.555722828673437,
+      "n": 168
+    },
+    "baseline_test": {
+      "mae": 0.11348860187728936,
+      "rmse": 0.1278491867421736,
+      "r2": -0.035422029986042824,
+      "mape_pct": 15.25358142554523,
+      "n": 168
+    },
+    "per_battery": {
+      "B0006": {
+        "mae": 0.01952982444277867,
+        "rmse": 0.02000173914037458,
+        "r2": 0.9746570609382097,
+        "mape_pct": 2.555722828673437,
+        "n": 168
+      }
+    },
+    "cv": {
+      "strategy": "leave-one-battery-out (3 pliegues)",
+      "mae_mean": 0.00499713565466784,
+      "mae_std": 0.0031720686444689163,
+      "rmse_mean": 0.0058756345466675595,
+      "rmse_std": 0.0033469592459829055,
+      "r2_mean": 0.9925345777930663,
+      "r2_std": 0.007828660728921492
+    },
+    "train_seconds": 0.0049
+  },
+  "feature_importance": [
+    {
+      "feature": "time_to_temp_max",
+      "importance": 0.06807603724850811,
+      "std": 0.003897213850804828
+    },
+    {
+      "feature": "time_to_3_5v",
+      "importance": 0.027801277403136215,
+      "std": 0.0017807373412199552
+    },
+    {
+      "feature": "v_at_500s",
+      "importance": 0.0030379881924575197,
+      "std": 0.00032681001772966926
+    },
+    {
+      "feature": "cycle",
+      "importance": 0.00020191422742758952,
+      "std": 8.995312947011629e-05
+    },
+    {
+      "feature": "v_std",
+      "importance": 7.130224536506732e-06,
+      "std": 7.93642072119619e-06
+    },
+    {
+      "feature": "v_mean",
+      "importance": 6.77092575042948e-06,
+      "std": 1.1329061336341814e-05
+    },
+    {
+      "feature": "cv_charge_time",
+      "importance": -6.938893903907229e-19,
+      "std": 1.387778780781446e-18
+    },
+    {
+      "feature": "cc_charge_time",
+      "importance": -1.3877787807814458e-18,
+      "std": 3.1798006553922512e-18
+    },
+    {
+      "feature": "charge_temp_max",
+      "importance": -1.734723475976807e-18,
+      "std": 3.5551252101777284e-18
+    },
+    {
+      "feature": "time_to_3_8v",
+      "importance": -2.4286128663675298e-18,
+      "std": 3.4867510341210805e-18
+    },
+    {
+      "feature": "re_ohm",
+      "importance": -2.4286128663675298e-18,
+      "std": 3.1225022567582532e-18
+    },
+    {
+      "feature": "temp_rise",
+      "importance": -2.7755575615628915e-18,
+      "std": 2.5962963631595154e-18
+    },
+    {
+      "feature": "rct_ohm",
+      "importance": -2.7755575615628915e-18,
+      "std": 2.5962963631595154e-18
+    },
+    {
+      "feature": "temp_max",
+      "importance": -3.122502256758253e-18,
+      "std": 2.8819390842226273e-18
+    }
+  ],
+  "train_feature_medians": {
+    "cycle": 78.5,
+    "v_mean": 3.5261649999999998,
+    "v_std": 0.245741,
+    "time_to_3_8v": 361.793,
+    "time_to_3_5v": 1573.165,
+    "v_at_500s": 3.75214,
+    "temp_max": 39.548100000000005,
+    "time_to_temp_max": 2900.98,
+    "temp_rise": 15.553799999999999,
+    "cc_charge_time": 2420.4799999999996,
+    "cv_charge_time": 7168.18,
+    "charge_temp_max": 29.595,
+    "re_ohm": 0.05840675,
+    "rct_ohm": 0.0837205
+  },
+  "n_train": 468,
+  "n_test": 168,
+  "warnings": [],
+  "dataset": {
+    "file": "nasa_battery_cycles.csv",
+    "sha256_16": "34169ce7ec688b5f"
+  },
+  "environment": {
+    "python": "3.13.18",
+    "scikit_learn": "1.9.1",
+    "numpy": "2.5.3",
+    "pandas": "3.0.5"
+  },
+  "artifacts": {
+    "model": "model.joblib",
+    "predictions": "predictions.csv"
+  }
+}

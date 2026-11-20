@@ -1,0 +1,190 @@
+{
+  "id": "referencia_rul_gradient_boosting",
+  "name": "Referencia RUL - Gradient Boosting (test B0006)",
+  "description": "RUL en ciclos; B0007 se excluye por no alcanzar el fin de vida.",
+  "created_at": "2026-11-20T18:12:29+00:00",
+  "status": "completed",
+  "config": {
+    "target": "rul",
+    "model_type": "gradient_boosting",
+    "hyperparameters": {
+      "n_estimators": 300,
+      "learning_rate": 0.05,
+      "max_depth": 3,
+      "subsample": 0.8
+    },
+    "features": [
+      "cycle",
+      "v_mean",
+      "v_std",
+      "time_to_3_8v",
+      "time_to_3_5v",
+      "v_at_500s",
+      "temp_max",
+      "time_to_temp_max",
+      "temp_rise",
+      "cc_charge_time",
+      "cv_charge_time",
+      "charge_temp_max",
+      "re_ohm",
+      "rct_ohm"
+    ],
+    "train_batteries": [
+      "B0005",
+      "B0018"
+    ],
+    "test_batteries": [
+      "B0006"
+    ],
+    "random_state": 42
+  },
+  "metrics": {
+    "train": {
+      "mae": 0.3550851069923807,
+      "rmse": 0.434333966882954,
+      "r2": 0.9998321486378766,
+      "mape_pct": 1.3327813284264611,
+      "n": 222
+    },
+    "test": {
+      "mae": 11.359272026629146,
+      "rmse": 12.978157927261075,
+      "r2": 0.8298660775909803,
+      "mape_pct": 31.51204437614715,
+      "n": 109
+    },
+    "baseline_test": {
+      "mae": 27.281180262831636,
+      "rmse": 31.52055278624811,
+      "r2": -0.003581058536013648,
+      "mape_pct": 201.15074286135547,
+      "n": 109
+    },
+    "per_battery": {
+      "B0006": {
+        "mae": 11.359272026629146,
+        "rmse": 12.978157927261075,
+        "r2": 0.8298660775909803,
+        "mape_pct": 31.51204437614715,
+        "n": 109
+      }
+    },
+    "cv": {
+      "strategy": "leave-one-battery-out (2 pliegues)",
+      "mae_mean": 20.411478581807877,
+      "mae_std": 1.0159934384163662,
+      "rmse_mean": 21.847016811687734,
+      "rmse_std": 0.9755732037005629,
+      "r2_mean": 0.5221558168699445,
+      "r2_std": 0.07778994733089922
+    },
+    "train_seconds": 0.3003
+  },
+  "feature_importance": [
+    {
+      "feature": "time_to_3_5v",
+      "importance": 13.589081123200696,
+      "std": 0.895166894179679
+    },
+    {
+      "feature": "temp_rise",
+      "importance": 0.7674309724230183,
+      "std": 0.09412452512769634
+    },
+    {
+      "feature": "temp_max",
+      "importance": 0.7225452637708629,
+      "std": 0.1600272947376227
+    },
+    {
+      "feature": "time_to_3_8v",
+      "importance": 0.5644459685915487,
+      "std": 0.040006288313702884
+    },
+    {
+      "feature": "charge_temp_max",
+      "importance": 0.1010670733468249,
+      "std": 0.017037994348653007
+    },
+    {
+      "feature": "re_ohm",
+      "importance": -0.05204414953382965,
+      "std": 0.03034722467969135
+    },
+    {
+      "feature": "rct_ohm",
+      "importance": -0.05503496669293924,
+      "std": 0.016289027715526296
+    },
+    {
+      "feature": "cv_charge_time",
+      "importance": -0.13676816699926456,
+      "std": 0.02340577099844807
+    },
+    {
+      "feature": "v_at_500s",
+      "importance": -0.1574634144418857,
+      "std": 0.07973723544790476
+    },
+    {
+      "feature": "cc_charge_time",
+      "importance": -0.30762839108054896,
+      "std": 0.10039454683107778
+    },
+    {
+      "feature": "v_mean",
+      "importance": -0.6564858926230868,
+      "std": 0.12521713218568134
+    },
+    {
+      "feature": "v_std",
+      "importance": -1.2552485846503254,
+      "std": 0.18457660260802053
+    },
+    {
+      "feature": "time_to_temp_max",
+      "importance": -1.333022335721542,
+      "std": 0.38870314089372987
+    },
+    {
+      "feature": "cycle",
+      "importance": -1.4454865604397562,
+      "std": 0.5353394597702419
+    }
+  ],
+  "train_feature_medians": {
+    "cycle": 56.0,
+    "v_mean": 3.5419400000000003,
+    "v_std": 0.231349,
+    "time_to_3_8v": 385.345,
+    "time_to_3_5v": 1691.48,
+    "v_at_500s": 3.763645,
+    "temp_max": 38.32965,
+    "time_to_temp_max": 2993.6099999999997,
+    "temp_rise": 14.58005,
+    "cc_charge_time": 2607.91,
+    "cv_charge_time": 7163.86,
+    "charge_temp_max": 29.8408,
+    "re_ohm": 0.0598533,
+    "rct_ohm": 0.0848558
+  },
+  "n_train": 222,
+  "n_test": 109,
+  "warnings": [
+    "Baterías sin fin de vida observado (RUL desconocido) excluidas: ['B0007']."
+  ],
+  "dataset": {
+    "file": "nasa_battery_cycles.csv",
+    "sha256_16": "34169ce7ec688b5f"
+  },
+  "environment": {
+    "python": "3.13.18",
+    "scikit_learn": "1.9.1",
+    "numpy": "2.5.3",
+    "pandas": "3.0.5"
+  },
+  "artifacts": {
+    "model": "model.joblib",
+    "predictions": "predictions.csv"
+  }
+}
