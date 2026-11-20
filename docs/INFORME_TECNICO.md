@@ -4,7 +4,7 @@
 
 Proyecto final de Fundamentos de IA + Machine Learning. Ingeniería Electrónica, Universidad del Magdalena.
 Docente: Rafael David Linero Ramos.
-Integrantes: _[completar]_.
+Integrantes: Santiago Cavadia y Andru Fonseca.
 Repositorio: <https://github.com/santiagoeduardocavadia-cmyk/ProyectoMachineLearning_SOHstate>
 
 Modalidad: **aplicación web** con backend FastAPI y frontend React, ejecutada localmente.
@@ -110,46 +110,32 @@ con una etiqueta interpretable: *bueno*, *degradado* o *fin de vida*.
 ## 4. Arquitectura
 
 ```mermaid
-flowchart LR
-    subgraph Cliente["Navegador"]
-        UI["Frontend React + Vite + Chart.js<br/>Datos · Entrenamiento · Experimentos · Metodología"]
+flowchart TB
+    UI["<b>Navegador</b><br/>Frontend React + Vite + Chart.js<br/>Datos · Entrenamiento · Experimentos · Metodología"]
+    UI -- "HTTP JSON /api/v1" --> API["<b>api/routes.py</b><br/>API REST FastAPI :8000<br/>+ errors.py (errores uniformes)"]
+
+    API --> DATA
+    API --> ML
+
+    subgraph DATA["app/data · datos"]
+        direction LR
+        PRE["preprocessing.py<br/>señales → 1 fila por ciclo"] --> FEAT["features.py<br/>14 características"]
+        DS["dataset.py<br/>carga y huella del CSV"]
     end
 
-    subgraph Servidor["Backend FastAPI :8000"]
-        API["api/routes.py<br/>API REST /api/v1"]
-        ERR["errors.py<br/>errores uniformes"]
-        subgraph Datos["app/data"]
-            PRE["preprocessing.py<br/>señales → 1 fila por ciclo"]
-            FEAT["features.py<br/>14 características"]
-            DS["dataset.py<br/>carga y huella del CSV"]
-        end
-        subgraph ML["app/ml"]
-            MOD["models.py<br/>catálogo e hiperparámetros"]
-            TRN["training.py<br/>split por batería, CV, línea base"]
-            INF["inference.py<br/>predicción"]
-            STO["store.py<br/>persistencia"]
-        end
+    subgraph ML["app/ml · machine learning"]
+        direction LR
+        MOD["models.py<br/>catálogo e hiperparámetros"] --> TRN["training.py<br/>split por batería · CV · línea base"]
+        INF["inference.py<br/>predicción"]
+        STO["store.py<br/>persistencia"]
+        TRN --> STO
+        INF --> STO
     end
 
-    subgraph Disco["Almacenamiento local"]
-        RAW[("data/raw<br/>.mat NASA")]
-        CSV[("data/processed<br/>nasa_battery_cycles.csv")]
-        EXP[("experiments/ID/<br/>experiment.json<br/>predictions.csv<br/>model.joblib")]
-    end
-
-    UI -- "HTTP JSON" --> API
-    API --> ERR
-    API --> DS
-    API --> TRN
-    API --> INF
-    TRN --> MOD
-    TRN --> STO
-    INF --> STO
+    RAW[(".mat crudos NASA<br/>(prepare_dataset.py, una vez)")] -.-> PRE
+    FEAT --> CSV[("data/processed<br/>nasa_battery_cycles.csv")]
     DS --> CSV
-    RAW -.->|"prepare_dataset.py, una sola vez"| PRE
-    PRE --> FEAT
-    FEAT --> CSV
-    STO --> EXP
+    STO --> EXP[("experiments/ID/<br/>experiment.json · predictions.csv · model.joblib")]
 ```
 
 **Decisiones de arquitectura**

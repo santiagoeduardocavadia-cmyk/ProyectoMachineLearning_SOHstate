@@ -5,13 +5,13 @@ Sirve para la sustentación oral o para grabar el video. Antes de empezar, dejen
 
 | Min | Quién | Qué mostrar | Qué decir (idea clave) | Criterio de la rúbrica |
 |---|---|---|---|---|
-| 0–2 | _[integrante]_ | Diapositiva o README | El problema: estimar SOH y RUL sin hacer una descarga completa. Usuario: analista de confiabilidad. Dataset NASA, 4 celdas | Planteamiento (10 %) |
-| 2–4 | _[integrante]_ | Diagrama de arquitectura (informe, §4) | Backend y frontend separados por una API versionada; persistencia en archivos; `Pipeline` sin fuga. Por qué no Streamlit | Arquitectura (15 %) |
-| 4–6 | _[integrante]_ | Pestaña **Datos** | Las curvas cruzan 1.4 Ah. B0007 no llega al EOL. Las 14 variables y por qué **no** se usa la duración de la descarga | Integración ML (15 %) |
-| 6–9 | _[integrante]_ | **Entrenamiento** → **Experimentos** (en vivo) | Entrenar SOH con Random Forest y test B0006. Señalar la línea base y la CV. Luego Ridge: gana porque los árboles no extrapolan | Implementación (20 %) y ML |
-| 9–11 | _[integrante]_ | Detalle del experimento → inferencia | Predecir un ciclo y subir `docs/ejemplo_inferencia.csv`. Leer el resultado: SOH en % y estado. Señalar el ciclo 100, que cambia de etiqueta por estar cerca del umbral. Mostrar un error: `n_estimators = 5` | Implementación y UX (10 %) |
-| 11–13 | _[integrante]_ | Tabla §8.2 y pruebas (`pytest -q`) | El ranking cambia según la batería de test. 11 pruebas en CI. Sobreajuste detectado (train contra test) | Evaluación (15 %) |
-| 13–15 | _[integrante]_ | Informe §10 y §11 | Solo 4 celdas a 24 °C: no generaliza. Sobrestimar el SOH es peligroso: es apoyo, no un BMS. Riesgo de pickle. Uso de IA en el desarrollo. Trabajo futuro | Ética (5 %) y documentación (10 %) |
+| 0–2 | Santiago Cavadia | Diapositiva o README | El problema: estimar SOH y RUL sin hacer una descarga completa. Usuario: analista de confiabilidad. Dataset NASA, 4 celdas | Planteamiento (10 %) |
+| 2–4 | Andru Fonseca | Diagrama de arquitectura (informe, §4) | Backend y frontend separados por una API versionada; persistencia en archivos; `Pipeline` sin fuga. Por qué no Streamlit | Arquitectura (15 %) |
+| 4–6 | Santiago Cavadia | Pestaña **Datos** | Las curvas cruzan 1.4 Ah. B0007 no llega al EOL. Las 14 variables y por qué **no** se usa la duración de la descarga | Integración ML (15 %) |
+| 6–9 | Andru Fonseca | **Entrenamiento** → **Experimentos** (en vivo) | Entrenar SOH con Random Forest y test B0006. Señalar la línea base y la CV. Luego Ridge: gana porque los árboles no extrapolan | Implementación (20 %) y ML |
+| 9–11 | Santiago Cavadia | Detalle del experimento → inferencia | Predecir un ciclo y subir `docs/ejemplo_inferencia.csv`. Leer el resultado: SOH en % y estado. Señalar el ciclo 100, que cambia de etiqueta por estar cerca del umbral. Mostrar un error: `n_estimators = 5` | Implementación y UX (10 %) |
+| 11–13 | Andru Fonseca | Tabla §8.2 y pruebas (`pytest -q`) | El ranking cambia según la batería de test. 11 pruebas en CI. Sobreajuste detectado (train contra test) | Evaluación (15 %) |
+| 13–15 | Santiago Cavadia | Informe §10 y §11 | Solo 4 celdas a 24 °C: no generaliza. Sobrestimar el SOH es peligroso: es apoyo, no un BMS. Riesgo de pickle. Uso de IA en el desarrollo. Trabajo futuro | Ética (5 %) y documentación (10 %) |
 
 ## Preguntas probables y respuesta corta
 
@@ -62,5 +62,5 @@ Más baterías y condiciones, intervalos de predicción, avisos de entrada fuera
 - [x] Borrado el experimento de prueba `entrenamineto-1`
 - [x] Capturas en `docs/capturas/`, enlazadas en el informe (§5 y §8.4)
 - [ ] Opcional: captura del formulario de Entrenamiento
-- [ ] Completar los nombres de los integrantes y quién presenta cada parte
+- [x] Integrantes asignados por bloque (se pueden intercambiar)
 - [x] Flujos verificados (informe, §8.3)
