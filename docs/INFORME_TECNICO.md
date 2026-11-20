@@ -189,11 +189,26 @@ flowchart TD
 | Inferencia (dentro del detalle) | Batería y ciclos, valores manuales o CSV | Predicción por fila con su estado |
 | Metodología | — | Explicación del split, la línea base, la CV, la selección de variables y el caso de B0007 |
 
-_Capturas: guardar en `docs/capturas/` y enlazarlas aquí._
+**Evidencia de ejecución**
 
-| Datos | Entrenamiento | Experimentos | Inferencia |
-|---|---|---|---|
-| _[captura]_ | _[captura]_ | _[captura]_ | _[captura]_ |
+*Datos: curva de degradación de B0006.* Cruza el umbral de 1.4 Ah en el ciclo 109 y termina con 59.3 % de salud.
+
+![Pestaña Datos: curva de degradación de B0006](capturas/datos_degradacion.png)
+
+*Experimento SOH con Random Forest y test B0006: métricas contra la línea base y validación cruzada.*
+
+![Métricas del experimento](capturas/experimento_metricas.png)
+
+*Configuración guardada del experimento: modelo, baterías, semilla, variables e hiperparámetros.*
+
+![Configuración guardada](capturas/experimento_configuracion.png)
+
+*Inferencia por batería y ciclo.* La interfaz avisa cuando la batería se usó en el entrenamiento y muestra el resultado
+en %, la capacidad estimada y el estado.
+
+![Inferencia](capturas/inferencia.png)
+
+Las gráficas de predicciones e importancia de variables están en §8.4.
 
 ## 6. Datos y preprocesamiento
 
@@ -326,13 +341,51 @@ o RUL con B0007 como test), `invalid_features`, `experiment_not_found`, `cycle_n
 
 **Verificación de flujos de usuario** (manual, en el navegador):
 
-| Flujo | Resultado esperado | Estado |
-|---|---|---|
-| Ver la degradación de B0006 | La curva cruza la línea de 1.4 Ah | _[verificar]_ |
-| Entrenar SOH con Random Forest y test B0006 | Métricas visibles y guardadas | _[verificar]_ |
-| Comparar Ridge contra Random Forest | Ridge con menor MAE | _[verificar]_ |
-| Inferencia con un CSV | Predicción por fila con su estado | _[verificar]_ |
-| Hiperparámetro inválido | Mensaje en el campo, sin bloquear la interfaz | _[verificar]_ |
+| Flujo | Resultado esperado | Resultado obtenido | Estado |
+|---|---|---|---|
+| Ver la degradación de B0006 | La curva cruza la línea de 1.4 Ah | Cruza en el ciclo 109 y termina en 59.3 % de salud (captura en §5) | ✅ Interfaz |
+| Entrenar SOH con Random Forest y test B0006 | Métricas visibles y guardadas | MAE 0.030, R² 0.914 y línea base 0.113. Se guardan la configuración y la semilla (capturas en §5) | ✅ Interfaz |
+| Inferencia por batería y ciclo | Predicción con su estado | B0005, ciclo 100: 74.37 % predicho contra 74.29 % real, *degradado*. Muestra el aviso de que la batería se usó en el entrenamiento | ✅ Interfaz |
+| Comparar Ridge contra Random Forest | Ridge con menor MAE | Ridge 0.0195 contra RF 0.0301 | ✅ API |
+| Inferencia con un CSV (`docs/ejemplo_inferencia.csv`) | Predicción por fila con su estado | 5 filas de B0006 predichas. Avisa que imputó 2 valores nulos | ✅ API |
+| Hiperparámetro inválido (`n_estimators = 5`) | Error explícito y no se crea el experimento | HTTP 422 `invalid_hyperparameters`: "debe estar en [10, 1000]". El número de experimentos no cambia | ✅ API |
+
+Los tres primeros flujos se verificaron en la interfaz. Los tres últimos se verificaron contra la API en ejecución, que es
+la misma que usa la interfaz.
+
+### 8.4 Evidencia visual del comportamiento del modelo
+
+*Predicciones por ciclo (Random Forest, test B0006).* La predicción sigue bien la curva real hasta un SOH de unos 65 % y
+**después se aplana**, mientras la batería real sigue bajando hasta 58 %. Es la limitación de extrapolación de los
+árboles descrita en §8.2.
+
+![Predicciones por ciclo](capturas/predicciones_por_ciclo.png)
+
+*Valor predicho contra real y residuales.* Por debajo de 65 % real, los puntos forman una línea horizontal y los residuales
+crecen hasta +7 pp al final de la vida: el modelo **sobrestima** la salud justo cuando la batería está peor. Ese es el
+error más riesgoso (ver §10). Al inicio también hay un sesgo negativo: el modelo subestima las celdas casi nuevas.
+
+![Predicho frente a real y residuales](capturas/predicho_vs_real.png)
+
+*Importancia por permutación.* `time_to_3_5v` y `time_to_temp_max` concentran casi toda la importancia, y ambas tienen
+sentido físico (§6). Varias variables aportan casi nada, así que un modelo con menos variables podría rendir igual.
+
+![Importancia de las variables](capturas/importancia_variables.png)
+
+### 8.5 Resultado del caso de inferencia por CSV
+
+Modelo `referencia_soh_ridge` sobre `docs/ejemplo_inferencia.csv` (B0006):
+
+| Ciclo | SOH real | SOH predicho | Estado real | Estado predicho |
+|---|---|---|---|---|
+| 1 | 101.8 % | 98.9 % | bueno | bueno |
+| 50 | 88.8 % | 86.9 % | bueno | bueno |
+| **100** | **71.6 %** | **69.4 %** | **degradado** | **fin de vida** ⚠️ |
+| 150 | 62.7 % | 61.1 % | fin de vida | fin de vida |
+| 168 | 59.3 % | 58.3 % | fin de vida | fin de vida |
+
+Un error de solo 2.2 pp en el ciclo 100 cambia la etiqueta, porque el valor real está cerca del umbral de 70 %
+(ver §9, hallazgo 10).
 
 ## 9. Registro de errores, limitaciones y decisiones de mejora
 
@@ -347,6 +400,8 @@ o RUL con B0007 como test), `invalid_features`, `experiment_not_found`, `cycle_n
 | 7 | 57 ciclos sin impedancia válida y valores Re/Rct corruptos | Calidad de datos | Re y Rct deben estar en (0, 1) Ω. Se imputan con la mediana del entrenamiento dentro del `Pipeline` |
 | 8 | Un modelo guardado con otra versión de scikit-learn puede dar advertencias al cargarse | Reproducibilidad | Se guardan las versiones de librerías. Script `run_reference_experiment` para regenerarlo |
 | 9 | Las predicciones no traen intervalo de confianza | Limitación funcional | A futuro: intervalos con regresión por cuantiles o *conformal prediction* |
+| 10 | Cerca de los umbrales (85 % y 70 %), un error pequeño cambia la etiqueta de estado. B0006, ciclo 100: real 71.6 % (*degradado*), predicho 69.4 % (*fin de vida*) (§8.5) | Limitación de interpretación | A futuro: marcar como "zona de incertidumbre" los resultados a menos de un MAE del umbral, en vez de dar una etiqueta tajante |
+| 11 | El Random Forest sobrestima el SOH hasta +7 pp al final de la vida de B0006 (§8.4) | Riesgo de seguridad | Se documenta en §10. Para baterías muy degradadas conviene usar Ridge o un modelo que extrapole |
 
 ## 10. Consideraciones éticas, de seguridad y de uso responsable
 
@@ -363,7 +418,7 @@ se puede seguir usando y aumenta el riesgo de falla o embalamiento térmico. Por
   falsa precisión. Mostrarlo junto a cada predicción en la interfaz es una mejora recomendada.
 
 **Extrapolación.** Cuando una celda se degrada más allá de lo visto en el entrenamiento (B0006), los modelos de árboles
-subestiman la degradación. Un uso responsable implica avisar al usuario cuando la entrada está fuera del rango
+subestiman la degradación: el Random Forest llegó a sobrestimar el SOH en unos 7 pp al final de la vida (§8.4). Un uso responsable implica avisar al usuario cuando la entrada está fuera del rango
 de entrenamiento; esta función queda como mejora pendiente.
 
 **Impacto económico y social.** Una buena estimación puede extender la vida útil, permitir usos de "segunda vida" y

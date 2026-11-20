@@ -9,7 +9,7 @@ Sirve para la sustentación oral o para grabar el video. Antes de empezar, dejen
 | 2–4 | _[integrante]_ | Diagrama de arquitectura (informe, §4) | Backend y frontend separados por una API versionada; persistencia en archivos; `Pipeline` sin fuga. Por qué no Streamlit | Arquitectura (15 %) |
 | 4–6 | _[integrante]_ | Pestaña **Datos** | Las curvas cruzan 1.4 Ah. B0007 no llega al EOL. Las 14 variables y por qué **no** se usa la duración de la descarga | Integración ML (15 %) |
 | 6–9 | _[integrante]_ | **Entrenamiento** → **Experimentos** (en vivo) | Entrenar SOH con Random Forest y test B0006. Señalar la línea base y la CV. Luego Ridge: gana porque los árboles no extrapolan | Implementación (20 %) y ML |
-| 9–11 | _[integrante]_ | Detalle del experimento → inferencia | Predecir un ciclo y un CSV. Leer el resultado: SOH en % y estado. Mostrar un error: `n_estimators = 5` | Implementación y UX (10 %) |
+| 9–11 | _[integrante]_ | Detalle del experimento → inferencia | Predecir un ciclo y subir `docs/ejemplo_inferencia.csv`. Leer el resultado: SOH en % y estado. Señalar el ciclo 100, que cambia de etiqueta por estar cerca del umbral. Mostrar un error: `n_estimators = 5` | Implementación y UX (10 %) |
 | 11–13 | _[integrante]_ | Tabla §8.2 y pruebas (`pytest -q`) | El ranking cambia según la batería de test. 11 pruebas en CI. Sobreajuste detectado (train contra test) | Evaluación (15 %) |
 | 13–15 | _[integrante]_ | Informe §10 y §11 | Solo 4 celdas a 24 °C: no generaliza. Sobrestimar el SOH es peligroso: es apoyo, no un BMS. Riesgo de pickle. Uso de IA en el desarrollo. Trabajo futuro | Ética (5 %) y documentación (10 %) |
 
@@ -44,6 +44,10 @@ B0007 no llega al EOL, así que su RUL es desconocida (censurada). Con B0006 en 
 No sin volver a entrenar y validar: cambian la química, la temperatura, la corriente y el fabricante. Fuera de las
 condiciones de entrenamiento no hay garantía, y sobrestimar el SOH tiene riesgo de seguridad.
 
+**¿Por qué el ciclo 100 de B0006 sale como "fin de vida" si en realidad está "degradado"?**
+Su SOH real es 71.6 %, muy cerca del umbral de 70 %. El modelo predice 69.4 %: un error de solo 2.2 pp, menor que su MAE
+habitual, basta para cruzar el umbral. Las etiquetas cerca de un umbral deben leerse con el margen de error en mente.
+
 **¿Qué variable es la más importante?**
 `time_to_3_5v`: una celda degradada llega antes a 3.5 V. Le sigue `time_to_temp_max`: una mayor resistencia interna hace que
 la celda se caliente antes. Ambas tienen sentido físico.
@@ -53,8 +57,10 @@ Más baterías y condiciones, intervalos de predicción, avisos de entrada fuera
 
 ## Lista previa
 
-- [ ] Backend y frontend corriendo, y `pytest -q` pasando (11 pruebas)
-- [ ] Borrar o renombrar los experimentos de prueba (p. ej. `entrenamineto-1`)
-- [ ] Capturas en `docs/capturas/`, enlazadas en el informe (§5)
+- [x] `pytest -q` pasando (11 pruebas), verificado el 2026-11-20
+- [ ] Backend y frontend corriendo antes de empezar
+- [x] Borrado el experimento de prueba `entrenamineto-1`
+- [x] Capturas en `docs/capturas/`, enlazadas en el informe (§5 y §8.4)
+- [ ] Opcional: captura del formulario de Entrenamiento
 - [ ] Completar los nombres de los integrantes y quién presenta cada parte
-- [ ] Verificar la tabla de flujos manuales (informe, §8.3)
+- [x] Flujos verificados (informe, §8.3)
