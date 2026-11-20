@@ -2,7 +2,7 @@
 
 > **Para ChatGPT:** este documento es tu contexto completo. Tú construyes **solo el frontend** (carpeta `frontend/`).
 > El backend ya existe, lo mantiene Claude y se consume **únicamente** por HTTP con el contrato de abajo.
-> Versión del contrato: **API v1.0.0** (prefijo `/api/v1`). Repositorio:
+> Versión del contrato: **API v1.1.0** (prefijo `/api/v1`). Novedades de v1.1.0 en la sección 4.3. Repositorio:
 > https://github.com/santiagoeduardocavadia-cmyk/ProyectoMachineLearning_SOHstate
 
 ---
@@ -81,10 +81,11 @@ Convenciones:
 
 | HTTP | `code` posibles |
 |---|---|
-| 400 | `invalid_experiment_id` |
-| 404 | `not_found`, `battery_not_found`, `experiment_not_found`, `cycle_not_found` |
+| 400 | `invalid_experiment_id`, `invalid_dataset_id` |
+| 403 | `dataset_protected` (v1.1) |
+| 404 | `not_found`, `battery_not_found`, `experiment_not_found`, `cycle_not_found`, `dataset_not_found` |
 | 413 / 415 | `file_too_large`, `invalid_file` |
-| 422 | `validation_error`, `unknown_model`, `invalid_hyperparameters`, `invalid_features`, `invalid_split`, `invalid_samples`, `invalid_file` |
+| 422 | `validation_error`, `unknown_model`, `invalid_hyperparameters`, `invalid_features`, `invalid_split`, `invalid_samples`, `invalid_file`, `invalid_dataset` (v1.1) |
 | 500 / 503 | `internal_error`, `dataset_not_found`, `dataset_invalid` |
 
 ### 4.1 Resumen de endpoints
@@ -105,15 +106,20 @@ Convenciones:
 | GET | `/experiments/{id}/feature-importance` | **Gráfico** de barras de importancia |
 | GET | `/experiments/{id}/model` | Botón "descargar modelo" (.joblib) |
 | POST | `/experiments/{id}/predict` | **Inferencia** manual o por batería/ciclo |
-| POST | `/experiments/{id}/predict/csv` | **Inferencia** subiendo un CSV |
+| POST | `/experiments/{id}/predict/csv` | **Inferencia** subiendo un CSV (con métricas si trae la columna real) |
+| GET | `/datasets` | **(v1.1)** Lista de datasets disponibles (NASA + subidos) |
+| POST | `/datasets` | **(v1.1)** **Cargar datos**: subir un CSV propio para entrenar |
+| GET | `/datasets/template` | **(v1.1)** Descargar plantilla CSV |
+| GET | `/datasets/{dataset_id}` | **(v1.1)** Detalle de un dataset |
+| DELETE | `/datasets/{dataset_id}` | **(v1.1)** Borrar un dataset subido (204) |
 
-Todas las rutas llevan el prefijo `/api/v1`.
+Todas las rutas llevan el prefijo `/api/v1`. Desde v1.1.0, todos los `GET /dataset/...` aceptan `?dataset_id=` (por defecto `nasa`).
 
 ### 4.2 Detalle con ejemplos
 
 #### GET `/api/v1/health`
 ```json
-{ "status": "ok", "api_version": "1.0.0", "app_version": "1.0.0", "dataset": { "loaded": true, "rows": 636 } }
+{ "status": "ok", "api_version": "1.1.0", "app_version": "1.1.0", "dataset": { "loaded": true, "rows": 636 } }
 ```
 
 #### GET `/api/v1/dataset/summary`
@@ -305,6 +311,65 @@ Response:
 y `cycle` opcionales, que se devuelven en la respuesta). Respuesta igual a `/predict` en modo `samples`.
 Ejemplo de CSV válido: las filas de `backend/data/processed/nasa_battery_cycles.csv` sin las columnas objetivo.
 
+### 4.3 Novedades v1.1.0: cargar un dataset propio para entrenar
+
+Todo es **compatible** con v1.0.0: si no envías `dataset_id`, todo funciona igual que antes con el dataset NASA.
+
+**Formato del CSV** (una fila por ciclo de descarga, máx. 20 MB):
+- Obligatorias: `battery_id` (texto), `cycle` (entero ≥ 1), `capacity_ah` (Ah medidos en ese ciclo).
+- Opcionales: cualquiera de las 14 características (`v_mean`, `time_to_3_5v`, ...). Las que falten quedan vacías y no se
+  pueden usar para entrenar. Debe haber al menos una además de `cycle`.
+- `soh`, `rul` y `eol_cycle` **siempre se recalculan** en el backend (si vienen, se ignoran con una advertencia).
+- Mínimo 10 ciclos válidos y 2 baterías. No puede haber `(battery_id, cycle)` repetidos.
+- Plantilla con el formato exacto: `GET /api/v1/datasets/template` (descarga `plantilla_dataset.csv`).
+
+#### POST `/api/v1/datasets` → 201
+`multipart/form-data` con:
+| Campo | Obligatorio | Descripción |
+|---|---|---|
+| `file` | sí | el `.csv` |
+| `name` | sí | nombre visible (1–80 caracteres) |
+| `nominal_capacity_ah` | no | capacidad nominal para calcular SOH (por defecto 2.0) |
+| `eol_capacity_ah` | no | umbral de fin de vida para el RUL (por defecto 0.7 × nominal). Debe ser < nominal |
+
+Response (mismo objeto que `GET /datasets/{id}` y que cada elemento de `GET /datasets`):
+```json
+{
+  "id": "up_20261120T195705_mis-baterias_75212b",
+  "name": "Mis baterías", "source": "upload", "is_default": false,
+  "created_at": "2026-11-20T19:57:05+00:00",
+  "nominal_capacity_ah": 2.0, "eol_capacity_ah": 1.4,
+  "warnings": ["Características ausentes (quedan vacías y no se podrán usar para entrenar): ['v_std', ...]."],
+  "n_rows": 468, "n_batteries": 3,
+  "batteries": [ { "battery_id": "MI_B0005", "n_cycles": 168, "reaches_eol": true } ],
+  "sha256_16": "7cf53852eb016ca9"
+}
+```
+El dataset NASA aparece en `GET /datasets` con `"id": "nasa"`, `"source": "nasa"`, `"is_default": true` y `created_at: null`;
+no se puede borrar (`403 dataset_protected`). Errores de validación: `422 invalid_dataset` con `details`
+(p. ej. `{"columns": {"v_mean": 1}}` = una celda no numérica en `v_mean`).
+
+#### Entrenar con un dataset subido
+`POST /api/v1/experiments` acepta el campo nuevo **`dataset_id`** (por defecto `"nasa"`):
+```json
+{ "name": "Mi experimento", "dataset_id": "up_20261120T195705_mis-baterias_75212b",
+  "target": "soh", "model_type": "random_forest", "test_batteries": ["MI_B0006"] }
+```
+- `test_batteries` debe usar baterías **de ese dataset** (el valor por defecto `["B0006"]` no existe en un dataset propio:
+  la UI debe ofrecer las baterías de `GET /datasets/{id}` → `batteries`).
+- Con `features: null` se usan solo las características que tienen datos. Pedir una sin datos da `invalid_features`.
+- El experimento guarda `config.dataset_id` y `dataset.{id, name, nominal_capacity_ah, eol_capacity_ah}`.
+  `GET /experiments` incluye `dataset_id` en cada resumen y acepta el filtro `?dataset_id=`.
+- Para las gráficas de un dataset subido usa `GET /dataset/summary?dataset_id=...`,
+  `GET /dataset/batteries/{b}/degradation?dataset_id=...` y `GET /dataset/cycles?dataset_id=...`.
+
+#### Métricas en la inferencia
+La respuesta de `POST /experiments/{id}/predict` y `/predict/csv` trae el campo nuevo **`metrics`**
+(`{mae, rmse, r2, mape_pct, n}` o `null`):
+- Por batería (`battery_id`) se calcula siempre contra el valor real del dataset.
+- En `/predict/csv` se calcula si el CSV trae la columna del objetivo (`soh`, `rul` o `capacity_ah`). Entonces `actual` deja de ser `null`.
+  Si no la trae, `metrics` es `null` y aparece una advertencia en `warnings`.
+
 ## 5. Qué debe tener el frontend (requisitos del curso)
 
 1. **Datos:** resumen del dataset, tabla de baterías y curva de degradación (capacidad vs ciclo con la línea de EOL).
@@ -315,6 +380,8 @@ Ejemplo de CSV válido: las filas de `backend/data/processed/nasa_battery_cycles
 6. **Persistencia:** historial de experimentos (vienen del backend), ver detalle, borrar, descargar modelo.
 7. **Errores:** mostrar `error.message` (y `details` cuando sea una lista de campos) sin romper la página.
 8. Una sección corta "Metodología" que explique las 5 decisiones técnicas de la sección 1.
+9. **(v1.1) Cargar datos:** formulario para subir un CSV propio (con enlace a la plantilla), lista de datasets con
+   advertencias, selector de dataset en Datos y en Entrenamiento, y métricas en la predicción por CSV.
 
 ## 6. Reglas de colaboración (para no cruzarnos)
 
@@ -362,3 +429,4 @@ Commits pequeños y frecuentes, en español, y que el proyecto corra después de
 | Versión | Fecha | Cambios |
 |---|---|---|
 | 1.0.0 | 2026-11-20 | Versión inicial |
+| 1.1.0 | 2026-11-20 | Subida de datasets propios (`/datasets`), `dataset_id` en experimentos y en `/dataset/*`, `metrics` en inferencia |
