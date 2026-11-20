@@ -228,7 +228,14 @@ function Charts({ experiment: e, path }) {
               x: scale(p.y_true, target),
               y: scale(p.y_pred, target),
             }));
-            const limits = pairs.flatMap((p) => [p.x, p.y]);
+            const lower = pairs.reduce(
+              (n, p) => Math.min(n, p.x, p.y),
+              Infinity,
+            );
+            const upper = pairs.reduce(
+              (n, p) => Math.max(n, p.x, p.y),
+              -Infinity,
+            );
             return (
               <>
                 <Plot
@@ -252,9 +259,7 @@ function Charts({ experiment: e, path }) {
                         series("Ciclos", pairs, green, { pointRadius: 2.5 }),
                         series(
                           "Predicción ideal",
-                          [Math.min(...limits), Math.max(...limits)].map(
-                            (v) => ({ x: v, y: v }),
-                          ),
+                          [lower, upper].map((v) => ({ x: v, y: v })),
                           ochre,
                           { showLine: true, borderDash: [4, 4] },
                         ),
@@ -308,7 +313,7 @@ function Charts({ experiment: e, path }) {
     </>
   );
 }
-export function Detail({ id, models, features }) {
+export function Detail({ id }) {
   const path = "/experiments/" + encodeURIComponent(id);
   const detail = useApi(path);
   const [tab, setTab] = useState("Métricas");
@@ -363,14 +368,7 @@ export function Detail({ id, models, features }) {
             </div>
             {tab === "Métricas" && <Metrics experiment={e} />}
             {tab === "Gráficos" && <Charts experiment={e} path={path} />}
-            {tab === "Inferencia" && (
-              <Inference
-                experiment={e}
-                path={path}
-                models={models}
-                features={features}
-              />
-            )}
+            {tab === "Inferencia" && <Inference experiment={e} path={path} />}
           </>
         )}
       </Load>

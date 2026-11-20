@@ -1,5 +1,5 @@
 import React, { useState } from "react";
-import { post } from "./api";
+import { datasetPath, post, useApi } from "./api";
 import {
   ErrorBox,
   Load,
@@ -7,12 +7,15 @@ import {
   Warnings,
   measure,
   num,
+  scale,
   targetName,
+  unit,
 } from "./shared";
 
 function Predictions({ result }) {
   const [page, setPage] = useState(0);
-  const { predictions, target } = result;
+  const { predictions, target, metrics } = result;
+  const errorUnit = target === "soh" ? "pp" : unit[target];
   const start = page * 25;
   const headers = ["Muestra", "Predicción", "Real"];
   if (target === "soh") headers.push("Capacidad estimada (Ah)");
@@ -40,6 +43,30 @@ function Predictions({ result }) {
   return (
     <>
       <Warnings items={result.warnings} />
+      {metrics != null && (
+        <>
+          <h3>Métricas de inferencia</h3>
+          <Table
+            label="Métricas de inferencia"
+            headers={[
+              "MAE (" + errorUnit + ")",
+              "RMSE (" + errorUnit + ")",
+              "R²",
+              "MAPE (%)",
+              "Muestras",
+            ]}
+            rows={[
+              [
+                num(scale(metrics.mae, target), 4),
+                num(scale(metrics.rmse, target), 4),
+                num(metrics.r2, 4),
+                num(metrics.mape_pct, 3),
+                num(metrics.n),
+              ],
+            ]}
+          />
+        </>
+      )}
       <h3>Resultados · {predictions.length}</h3>
       <Table headers={headers} rows={rows} label="Resultados de inferencia" />
       {predictions.length > 25 && (
@@ -61,7 +88,13 @@ function Predictions({ result }) {
     </>
   );
 }
-function PredictForm({ mode, experiment, path, catalog, features }) {
+function PredictForm({
+  mode,
+  experiment,
+  path,
+  batteries = [],
+  features = [],
+}) {
   const [result, setResult] = useState(null);
   const [error, setError] = useState(null);
   const [busy, setBusy] = useState(false);
@@ -119,8 +152,8 @@ function PredictForm({ mode, experiment, path, catalog, features }) {
               <label>
                 Batería
                 <select name="battery">
-                  {catalog.batteries.map((b) => (
-                    <option key={b}>{b}</option>
+                  {batteries.map((b) => (
+                    <option key={b.battery_id}>{b.battery_id}</option>
                   ))}
                 </select>
               </label>
@@ -150,9 +183,11 @@ function PredictForm({ mode, experiment, path, catalog, features }) {
                           experiment.train_feature_medians?.[n] ?? "",
                         )}
                       />
-                      <small>
-                        Rango observado {num(f?.min, 3)} a {num(f?.max, 3)}
-                      </small>
+                      {f && (
+                        <small>
+                          Rango observado {num(f?.min, 3)} a {num(f?.max, 3)}
+                        </small>
+                      )}
                     </label>
                   );
                 })}
@@ -171,6 +206,13 @@ function PredictForm({ mode, experiment, path, catalog, features }) {
                 />
               </label>
               <p className="muted">Columnas del modelo: {names.join(", ")}.</p>
+              <p className="muted">
+                Para obtener métricas, incluye la columna real{" "}
+                {experiment.config.target === "capacity"
+                  ? "capacity_ah"
+                  : experiment.config.target}
+                .
+              </p>
             </>
           )}
           <button className="primary" disabled={busy}>
@@ -183,8 +225,17 @@ function PredictForm({ mode, experiment, path, catalog, features }) {
     </>
   );
 }
-export function Inference({ experiment, path, models, features }) {
+export function Inference({ experiment, path }) {
   const [mode, setMode] = useState("Por batería");
+  const datasetId = experiment.config.dataset_id || "nasa";
+  const summary = useApi(
+    mode === "Por batería" ? datasetPath("/dataset/summary", datasetId) : null,
+  );
+  const features = useApi(
+    mode === "Valores manuales"
+      ? datasetPath("/dataset/features", datasetId)
+      : null,
+  );
   return (
     <section className="panel">
       <h2>Inferencia</h2>
@@ -199,22 +250,27 @@ export function Inference({ experiment, path, models, features }) {
           </button>
         ))}
       </div>
-      <Load query={models}>
-        {(catalog) => (
-          <Load query={features}>
-            {(f) => (
-              <PredictForm
-                key={mode}
-                mode={mode}
-                experiment={experiment}
-                path={path}
-                catalog={catalog}
-                features={f.features}
-              />
-            )}
-          </Load>
-        )}
-      </Load>
+      {mode === "Por batería" ? (
+        <Load query={summary}>
+          {(s) => (
+            <PredictForm
+              key={mode}
+              mode={mode}
+              experiment={experiment}
+              path={path}
+              batteries={s.batteries}
+            />
+          )}
+        </Load>
+      ) : (
+        <PredictForm
+          key={mode}
+          mode={mode}
+          experiment={experiment}
+          path={path}
+          features={features.data?.features}
+        />
+      )}
     </section>
   );
 }

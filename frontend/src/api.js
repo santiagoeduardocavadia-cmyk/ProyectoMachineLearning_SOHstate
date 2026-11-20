@@ -4,6 +4,12 @@ export const base = (
   import.meta.env.VITE_API_URL || "http://localhost:8000/api/v1"
 ).replace(/\/+$/, "");
 
+export function datasetPath(path, datasetId, filters = {}) {
+  return (
+    path + "?" + new URLSearchParams({ dataset_id: datasetId, ...filters })
+  );
+}
+
 export async function request(path, options = {}) {
   let response;
   try {
@@ -25,6 +31,16 @@ export async function request(path, options = {}) {
           [d.field, d.message].filter(Boolean).join(": "),
         )
       : [];
+    if (
+      issue?.code === "invalid_dataset" &&
+      issue.details?.columns &&
+      !Array.isArray(issue.details.columns) &&
+      typeof issue.details.columns === "object"
+    ) {
+      for (const [name, count] of Object.entries(issue.details.columns)) {
+        fields.push(name + ": " + count + " valores inválidos");
+      }
+    }
     throw new Error(
       [
         issue?.message || "La API devolvió un error HTTP " + response.status,

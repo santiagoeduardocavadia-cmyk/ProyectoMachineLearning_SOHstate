@@ -680,3 +680,19 @@ footer {
     padding-left: 14px;
   }
 }
+.dataset-selector {
+  max-width: 32rem;
+  margin-bottom: 1.2rem;
+}
+.dataset-actions,
+.dataset-notice {
+  margin-block: 1rem;
+}
+.dataset-entry {
+  padding-block: 0.75rem;
+  border-top: 1px solid var(--border);
+}
+.dataset-entry h3 {
+  margin: 0 0 0.25rem;
+  overflow-wrap: anywhere;
+}

@@ -1,5 +1,5 @@
 import React, { useState } from "react";
-import { useApi } from "./api";
+import { datasetPath, useApi } from "./api";
 import {
   Heading,
   Load,
@@ -11,11 +11,14 @@ import {
   series,
 } from "./shared";
 
-function Degradation({ cell, nominal }) {
+function Degradation({ cell, nominal, datasetId }) {
   const query = useApi(
-    "/dataset/batteries/" +
-      encodeURIComponent(cell.battery_id) +
-      "/degradation",
+    datasetPath(
+      "/dataset/batteries/" +
+        encodeURIComponent(cell.battery_id) +
+        "/degradation",
+      datasetId,
+    ),
   );
   const remaining = (100 * cell.final_capacity_ah) / nominal;
   return (
@@ -49,11 +52,17 @@ function Degradation({ cell, nominal }) {
                   [
                     {
                       x: eol_cycle,
-                      y: Math.min(eol_capacity_ah, ...values.map((p) => p.y)),
+                      y: values.reduce(
+                        (low, p) => Math.min(low, p.y),
+                        eol_capacity_ah,
+                      ),
                     },
                     {
                       x: eol_cycle,
-                      y: Math.max(eol_capacity_ah, ...values.map((p) => p.y)),
+                      y: values.reduce(
+                        (high, p) => Math.max(high, p.y),
+                        eol_capacity_ah,
+                      ),
                     },
                   ],
                   "#85978e",
@@ -97,15 +106,14 @@ function Degradation({ cell, nominal }) {
     </div>
   );
 }
-function Cycles({ battery }) {
+function Cycles({ battery, datasetId }) {
   const [page, setPage] = useState(0);
   const query = useApi(
-    "/dataset/cycles?" +
-      new URLSearchParams({
-        battery_id: battery,
-        limit: 20,
-        offset: page * 20,
-      }),
+    datasetPath("/dataset/cycles", datasetId, {
+      battery_id: battery,
+      limit: 20,
+      offset: page * 20,
+    }),
   );
   return (
     <section className="panel">
@@ -153,8 +161,9 @@ function Cycles({ battery }) {
     </section>
   );
 }
-export function Data({ features }) {
-  const summary = useApi("/dataset/summary");
+export function Data({ dataset, selector }) {
+  const summary = useApi(datasetPath("/dataset/summary", dataset.id));
+  const features = useApi(datasetPath("/dataset/features", dataset.id));
   const [selected, select] = useState("");
   const [tab, setTab] = useState("Baterías");
   return (
@@ -168,6 +177,7 @@ export function Data({ features }) {
           </a>
         }
       />
+      {selector}
       <Load query={summary}>
         {(s) => {
           const cell =
@@ -204,7 +214,11 @@ export function Data({ features }) {
                       ))}
                     </div>
                   </div>
-                  <Degradation cell={cell} nominal={s.nominal_capacity_ah} />
+                  <Degradation
+                    cell={cell}
+                    nominal={s.nominal_capacity_ah}
+                    datasetId={dataset.id}
+                  />
                 </>
               )}
               <div className="tabs">
@@ -242,7 +256,11 @@ export function Data({ features }) {
                 </section>
               )}
               {tab === "Ciclos" && cell && (
-                <Cycles key={cell.battery_id} battery={cell.battery_id} />
+                <Cycles
+                  key={cell.battery_id}
+                  battery={cell.battery_id}
+                  datasetId={dataset.id}
+                />
               )}
               {tab === "Características" && (
                 <section className="panel">
