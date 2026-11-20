@@ -1,0 +1,128 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Demo técnica del backend</title>
+<style>
+  /* Página técnica mínima del BACKEND para validar la API. La UI final vive en frontend/. */
+  body { font-family: system-ui, sans-serif; max-width: 960px; margin: 16px auto; padding: 0 16px; }
+  fieldset { margin-bottom: 12px; }
+  label { display: inline-block; margin: 4px 12px 4px 0; }
+  table { border-collapse: collapse; margin: 8px 0; }
+  td, th { border: 1px solid #999; padding: 4px 8px; text-align: right; }
+  pre { background: #f4f4f4; padding: 8px; overflow: auto; max-height: 240px; }
+  .err { color: #b00020; }
+  svg { border: 1px solid #ccc; width: 100%; height: auto; }
+</style>
+</head>
+<body>
+<h1>Demo técnica del backend (SOH / RUL)</h1>
+<p>Página mínima para validar un experimento de punta a punta. La interfaz final la construye el frontend.
+   API completa en <a href="/docs">/docs</a>.</p>
+
+<fieldset>
+  <legend>1. Entrenar experimento</legend>
+  <label>Nombre <input id="name" value="RF SOH test B0006"></label>
+  <label>Objetivo <select id="target"><option>soh</option><option>rul</option><option>capacity</option></select></label>
+  <label>Modelo <select id="model"></select></label>
+  <label>Batería de test <select id="test"></select></label>
+  <button id="train">Entrenar</button>
+  <div id="trainStatus"></div>
+</fieldset>
+
+<fieldset>
+  <legend>2. Métricas</legend>
+  <div id="metrics">—</div>
+</fieldset>
+
+<fieldset>
+  <legend>3. Predicho vs real (baterías de test)</legend>
+  <svg id="plot" viewBox="0 0 900 360"></svg>
+</fieldset>
+
+<fieldset>
+  <legend>4. Inferencia</legend>
+  <label>Batería <select id="predBattery"></select></label>
+  <label>Ciclo <input id="predCycle" type="number" value="100" min="1" style="width:6em"></label>
+  <button id="predict">Predecir</button>
+  <pre id="predOut">—</pre>
+</fieldset>
+
+<script>
+const API = location.origin + "/api/v1";
+let currentId = null;
+
+async function call(path, opts = {}) {
+  const r = await fetch(API + path, { headers: { "Content-Type": "application/json" }, ...opts });
+  const body = r.status === 204 ? null : await r.json();
+  if (!r.ok) throw new Error(body?.error ? `${body.error.code}: ${body.error.message} ${JSON.stringify(body.error.details ?? "")}` : r.status);
+  return body;
+}
+const $ = (id) => document.getElementById(id);
+const fmt = (v, d = 4) => v == null ? "—" : Number(v).toFixed(d);
+
+async function init() {
+  const m = await call("/models");
+  $("model").innerHTML = m.models.map(x => `<option value="${x.key}">${x.label}</option>`).join("");
+  const opts = m.batteries.map(b => `<option${b === "B0006" ? " selected" : ""}>${b}</option>`).join("");
+  $("test").innerHTML = opts; $("predBattery").innerHTML = opts;
+}
+
+$("train").onclick = async () => {
+  $("trainStatus").textContent = "Entrenando...";
+  try {
+    const exp = await call("/experiments", { method: "POST", body: JSON.stringify({
+      name: $("name").value, target: $("target").value, model_type: $("model").value,
+      test_batteries: [$("test").value] }) });
+    currentId = exp.id;
+    $("trainStatus").textContent = `Experimento guardado: ${exp.id}` + (exp.warnings.length ? " | " + exp.warnings.join(" ") : "");
+    const t = exp.metrics.test, b = exp.metrics.baseline_test, cv = exp.metrics.cv;
+    $("metrics").innerHTML = `<table><tr><th></th><th>MAE</th><th>RMSE</th><th>R²</th><th>n</th></tr>
+      <tr><th>Test</th><td>${fmt(t.mae)}</td><td>${fmt(t.rmse)}</td><td>${fmt(t.r2, 3)}</td><td>${t.n}</td></tr>
+      <tr><th>Línea base (media)</th><td>${fmt(b.mae)}</td><td>${fmt(b.rmse)}</td><td>${fmt(b.r2, 3)}</td><td>${b.n}</td></tr>
+      ${cv ? `<tr><th>CV ${cv.strategy}</th><td>${fmt(cv.mae_mean)}</td><td>${fmt(cv.rmse_mean)}</td><td>${fmt(cv.r2_mean, 3)}</td><td></td></tr>` : ""}
+      </table>Variable más importante: <b>${exp.feature_importance[0].feature}</b>`;
+    const p = await call(`/experiments/${exp.id}/predictions?split=test`);
+    plot(p.points, exp.config.target);
+  } catch (e) { $("trainStatus").innerHTML = `<span class="err">${e.message}</span>`; }
+};
+
+$("predict").onclick = async () => {
+  if (!currentId) { $("predOut").textContent = "Primero entrena un experimento."; return; }
+  try {
+    const r = await call(`/experiments/${currentId}/predict`, { method: "POST", body: JSON.stringify({
+      battery_id: $("predBattery").value, cycles: [Number($("predCycle").value)] }) });
+    $("predOut").textContent = JSON.stringify(r, null, 2);
+  } catch (e) { $("predOut").innerHTML = `<span class="err">${e.message}</span>`; }
+};
+
+function plot(points, target) {
+  const W = 900, H = 360, L = 60, R = 20, T = 20, B = 40;
+  const xs = points.map(p => p.cycle), ys = points.flatMap(p => [p.y_true, p.y_pred]);
+  const x0 = Math.min(...xs), x1 = Math.max(...xs), y0 = Math.min(...ys), y1 = Math.max(...ys);
+  const sx = x => L + (x - x0) / (x1 - x0 || 1) * (W - L - R);
+  const sy = y => H - B - (y - y0) / (y1 - y0 || 1) * (H - T - B);
+  const line = (key, color) => {
+    let s = "";
+    for (const b of [...new Set(points.map(p => p.battery_id))]) {
+      const d = points.filter(p => p.battery_id === b).map((p, i) => `${i ? "L" : "M"}${sx(p.cycle)},${sy(p[key])}`).join("");
+      s += `<path d="${d}" fill="none" stroke="${color}" stroke-width="2"/>`;
+    }
+    return s;
+  };
+  $("plot").innerHTML = `
+    <line x1="${L}" y1="${H - B}" x2="${W - R}" y2="${H - B}" stroke="#333"/><line x1="${L}" y1="${T}" x2="${L}" y2="${H - B}" stroke="#333"/>
+    <text x="${W / 2}" y="${H - 8}" text-anchor="middle">ciclo</text>
+    <text x="${L - 6}" y="${sy(y1) + 4}" text-anchor="end" font-size="12">${fmt(y1, 2)}</text>
+    <text x="${L - 6}" y="${sy(y0) + 4}" text-anchor="end" font-size="12">${fmt(y0, 2)}</text>
+    <text x="${L}" y="${H - B + 16}" font-size="12">${x0}</text><text x="${W - R}" y="${H - B + 16}" text-anchor="end" font-size="12">${x1}</text>
+    ${line("y_true", "#1f77b4")}${line("y_pred", "#d62728")}
+    <text x="${W - R - 200}" y="${T + 12}" fill="#1f77b4">— real (${target})</text>
+    <text x="${W - R - 200}" y="${T + 30}" fill="#d62728">— predicho</text>`;
+}
+
+init().catch(e => $("trainStatus").innerHTML = `<span class="err">No se pudo conectar con la API: ${e.message}</span>`);
+</script>
+</body>
+</html>
