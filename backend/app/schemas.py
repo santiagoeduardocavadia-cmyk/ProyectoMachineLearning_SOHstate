@@ -23,6 +23,8 @@ class ExperimentCreate(BaseModel):
     test_batteries: list[str] = Field(default_factory=lambda: ["B0006"], min_length=1,
                                       description="Baterías reservadas para test (split por batería).")
     random_state: int = Field(42, ge=0, le=2**31 - 1)
+    dataset_id: str = Field("nasa", min_length=1, max_length=100,
+                            description="Dataset de entrenamiento (ver GET /api/v1/datasets). Por defecto el NASA.")
 
 
 class PredictRequest(BaseModel):

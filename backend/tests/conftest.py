@@ -8,6 +8,7 @@ from app import config
 def client(tmp_path, monkeypatch):
     # Cada test usa una carpeta de experimentos temporal para no ensuciar backend/experiments/.
     monkeypatch.setattr(config, "EXPERIMENTS_DIR", tmp_path / "experiments")
+    monkeypatch.setattr(config, "UPLOADS_DIR", tmp_path / "uploads")
     from app.main import app
 
     return TestClient(app)

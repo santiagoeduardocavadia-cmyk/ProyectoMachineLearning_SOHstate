@@ -62,13 +62,21 @@ def prepare_target_frame(df: pd.DataFrame, target: str) -> tuple[pd.DataFrame, l
 
 
 def validate_config(df: pd.DataFrame, cfg: dict[str, Any]) -> dict[str, Any]:
-    features = cfg.get("features") or list(DEFAULT_FEATURES)
+    usable, _ = prepare_target_frame(df, cfg["target"])
+    with_data = [f for f in FEATURE_NAMES if usable[f].notna().any()]
+    features = cfg.get("features") or [f for f in DEFAULT_FEATURES if f in with_data]
     unknown = sorted(set(features) - set(FEATURE_NAMES))
     if unknown:
         raise AppError("invalid_features", f"Características desconocidas: {unknown}", 422,
                        {"available": FEATURE_NAMES})
     if len(set(features)) != len(features):
         raise AppError("invalid_features", "Hay características repetidas.", 422)
+    empty = [f for f in features if f not in with_data]
+    if empty:
+        raise AppError("invalid_features", f"Estas características no tienen datos en el dataset: {empty}", 422,
+                       {"available": with_data})
+    if not features:
+        raise AppError("invalid_features", "No hay características con datos para entrenar.", 422)
 
     all_batteries = battery_ids(df)
     test = list(dict.fromkeys(cfg["test_batteries"]))
@@ -77,7 +85,6 @@ def validate_config(df: pd.DataFrame, cfg: dict[str, Any]) -> dict[str, Any]:
         raise AppError("battery_not_found", f"Baterías de test inexistentes: {missing}", 422,
                        {"available": all_batteries})
 
-    usable, _ = prepare_target_frame(df, cfg["target"])
     usable_ids = set(usable["battery_id"].unique())
     bad_test = sorted(set(test) - usable_ids)
     if bad_test:

@@ -51,6 +51,12 @@ curl -X POST http://localhost:8000/api/v1/experiments -H "Content-Type: applicat
      -d "{\"name\": \"RF SOH\", \"target\": \"soh\", \"model_type\": \"random_forest\", \"test_batteries\": [\"B0006\"]}"
 ```
 
+**Entrenar con tus propios datos (API v1.1):** sube un CSV con una fila por ciclo (`battery_id`, `cycle`, `capacity_ah`
+y las características que tengas) en `POST /api/v1/datasets` desde `/docs`. Descarga el formato exacto en
+`GET /api/v1/datasets/template`. Luego entrena con `POST /api/v1/experiments` indicando `"dataset_id"` y una batería
+de test de ese dataset. SOH y RUL se recalculan en el backend; los datasets subidos se guardan en `backend/data/uploads/`
+(no se versionan).
+
 Cada experimento queda guardado en `backend/experiments/<id>/`:
 `experiment.json` (configuración, métricas, importancias, versiones de librerías, huella del dataset),
 `predictions.csv` y `model.joblib`.
