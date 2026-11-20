@@ -9,6 +9,7 @@ import pandas as pd
 
 from app import config
 from app.data.dataset import get_dataset, require_battery, target_column
+from app.ml.training import regression_metrics
 from app.errors import AppError
 from app.ml import store
 
@@ -46,10 +47,13 @@ def _samples_frame(samples: list[dict[str, Any]], features: list[str]) -> tuple[
 
 
 def predict(experiment_id: str, *, samples: list[dict] | None = None, battery_id: str | None = None,
-            cycles: list[int] | None = None) -> dict[str, Any]:
+            cycles: list[int] | None = None, actuals: list[float | None] | None = None) -> dict[str, Any]:
+    """``actuals`` (opcional, modo samples): valores reales del objetivo para calcular métricas."""
     record = store.load_record(experiment_id)
     features: list[str] = record["config"]["features"]
     target: str = record["config"]["target"]
+    dataset_id: str = record["config"].get("dataset_id") or "nasa"
+    nominal = float(record.get("dataset", {}).get("nominal_capacity_ah") or config.NOMINAL_CAPACITY_AH)
     model = store.load_model(experiment_id)
 
     meta: list[dict[str, Any]] = []
@@ -57,10 +61,10 @@ def predict(experiment_id: str, *, samples: list[dict] | None = None, battery_id
     if samples is not None:
         X, warnings = _samples_frame(samples, features)
         meta = [{"index": i} for i in range(len(X))]
-        y_true = [None] * len(X)
+        y_true = list(actuals) if actuals is not None else [None] * len(X)
     else:
         warnings = []
-        sub = require_battery(get_dataset(), battery_id)
+        sub = require_battery(get_dataset(dataset_id), battery_id)
         if cycles:
             missing = sorted(set(cycles) - set(sub["cycle"]))
             if missing:
@@ -82,15 +86,21 @@ def predict(experiment_id: str, *, samples: list[dict] | None = None, battery_id
     for m, pred, real in zip(meta, y, y_true):
         item = {**m, "prediction": float(pred), "actual": real}
         if target == "soh":
-            item["capacity_ah_estimated"] = float(pred) * config.NOMINAL_CAPACITY_AH
+            item["capacity_ah_estimated"] = float(pred) * nominal
             item["health_status"] = health_status(float(pred))
         elif target == "capacity":
-            item["soh_estimated"] = float(pred) / config.NOMINAL_CAPACITY_AH
-            item["health_status"] = health_status(float(pred) / config.NOMINAL_CAPACITY_AH)
+            item["soh_estimated"] = float(pred) / nominal
+            item["health_status"] = health_status(float(pred) / nominal)
         out.append(item)
+
+    pairs = [(r, float(p)) for r, p in zip(y_true, y) if r is not None]
+    metrics = None
+    if pairs:
+        metrics = regression_metrics([r for r, _ in pairs], [p for _, p in pairs])
 
     return {
         "experiment_id": experiment_id,
+        "metrics": metrics,
         "target": target,
         "unit": {"soh": "fracción (0-1)", "rul": "ciclos", "capacity": "Ah"}[target],
         "features_used": features,

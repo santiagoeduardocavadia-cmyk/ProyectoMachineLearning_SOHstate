@@ -14,6 +14,7 @@ DATA_DIR = Path(os.getenv("BATT_DATA_DIR", BACKEND_DIR / "data"))
 RAW_DIR = DATA_DIR / "raw"
 PROCESSED_DIR = DATA_DIR / "processed"
 PROCESSED_FILE = Path(os.getenv("BATT_PROCESSED_FILE", PROCESSED_DIR / "nasa_battery_cycles.csv"))
+UPLOADS_DIR = Path(os.getenv("BATT_UPLOADS_DIR", DATA_DIR / "uploads"))
 EXPERIMENTS_DIR = Path(os.getenv("BATT_EXPERIMENTS_DIR", BACKEND_DIR / "experiments"))
 
 # Fuente oficial: NASA Prognostics Center of Excellence (PCoE), "Battery Data Set".
@@ -27,7 +28,7 @@ EOL_CAPACITY_AH = 1.4          # fin de vida: 30 % de pérdida de capacidad
 DISCHARGE_CURRENT_A = 2.0      # descarga en corriente constante
 
 # Versión del contrato HTTP. Cambios incompatibles => nuevo prefijo (/api/v2).
-API_VERSION = "1.0.0"
+API_VERSION = "1.1.0"
 API_PREFIX = "/api/v1"
 
 # Orígenes permitidos para CORS (separados por coma). "*" = cualquiera (desarrollo).

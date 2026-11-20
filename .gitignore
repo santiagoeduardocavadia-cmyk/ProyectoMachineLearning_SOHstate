@@ -9,6 +9,7 @@ venv/
 # Datos crudos (se descargan con backend/scripts/prepare_dataset.py)
 backend/data/raw/*
 !backend/data/raw/.gitkeep
+backend/data/uploads/
 
 # Experimentos generados localmente (solo se versiona el experimento de referencia)
 backend/experiments/*

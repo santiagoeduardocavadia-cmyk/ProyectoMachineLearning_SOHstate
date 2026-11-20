@@ -94,7 +94,8 @@ def process_battery(battery_id: str, cycles: list[dict]) -> pd.DataFrame:
     return pd.DataFrame(rows)
 
 
-def add_targets(df: pd.DataFrame, eol_capacity: float = config.EOL_CAPACITY_AH) -> pd.DataFrame:
+def add_targets(df: pd.DataFrame, eol_capacity: float = config.EOL_CAPACITY_AH,
+                nominal_capacity: float = config.NOMINAL_CAPACITY_AH) -> pd.DataFrame:
     """Calcula SOH y RUL por batería.
 
     - ``soh = capacity_ah / 2.0`` (capacidad nominal).
@@ -106,7 +107,7 @@ def add_targets(df: pd.DataFrame, eol_capacity: float = config.EOL_CAPACITY_AH) 
     out = []
     for _, g in df.groupby("battery_id", sort=True):
         g = g.sort_values("cycle").copy()
-        g["soh"] = g["capacity_ah"] / config.NOMINAL_CAPACITY_AH
+        g["soh"] = g["capacity_ah"] / nominal_capacity
         below = g.loc[g["capacity_ah"] < eol_capacity, "cycle"]
         if below.empty:
             g["rul"] = np.nan
@@ -119,9 +120,9 @@ def add_targets(df: pd.DataFrame, eol_capacity: float = config.EOL_CAPACITY_AH) 
     return pd.concat(out, ignore_index=True)
 
 
-def clean(df: pd.DataFrame) -> pd.DataFrame:
+def clean(df: pd.DataFrame, nominal_capacity: float = config.NOMINAL_CAPACITY_AH) -> pd.DataFrame:
     """Elimina filas con capacidad ausente o físicamente imposible (> 1.2 × nominal o <= 0)."""
-    mask = df["capacity_ah"].between(0.01, 1.2 * config.NOMINAL_CAPACITY_AH)
+    mask = df["capacity_ah"].between(0.01, 1.2 * nominal_capacity)
     dropped = int((~mask).sum())
     if dropped:
         log.warning("Se descartaron %d ciclos con capacidad inválida", dropped)

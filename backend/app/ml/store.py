@@ -14,6 +14,7 @@ from __future__ import annotations
 import json
 import platform
 import re
+import unicodedata
 import shutil
 import uuid
 from datetime import datetime, timezone
@@ -38,7 +39,7 @@ def _dir(experiment_id: str, base: Path | None = None) -> Path:
 
 
 def new_id(name: str) -> str:
-    slug = re.sub(r"[^a-z0-9]+", "-", name.lower()).strip("-")[:30] or "exp"
+    slug = re.sub(r"[^a-z0-9]+", "-", unicodedata.normalize("NFKD", name.lower()).encode("ascii", "ignore").decode()).strip("-")[:30] or "exp"
     stamp = datetime.now(timezone.utc).strftime("%Y%m%dT%H%M%S")
     return f"{stamp}_{slug}_{uuid.uuid4().hex[:6]}"
 
@@ -49,7 +50,7 @@ def environment_info() -> dict[str, str]:
 
 
 def save(result: dict[str, Any], *, dataset_sha: str, experiment_id: str | None = None,
-         base: Path | None = None) -> dict[str, Any]:
+         base: Path | None = None, dataset_info: dict[str, Any] | None = None) -> dict[str, Any]:
     cfg = result["config"]
     experiment_id = experiment_id or new_id(cfg["name"])
     d = _dir(experiment_id, base)
@@ -60,15 +61,17 @@ def save(result: dict[str, Any], *, dataset_sha: str, experiment_id: str | None 
         "description": cfg.get("description"),
         "created_at": datetime.now(timezone.utc).isoformat(timespec="seconds"),
         "status": "completed",
-        "config": {k: cfg[k] for k in ("target", "model_type", "hyperparameters", "features",
-                                        "train_batteries", "test_batteries", "random_state")},
+        "config": {**{k: cfg[k] for k in ("target", "model_type", "hyperparameters", "features",
+                                          "train_batteries", "test_batteries", "random_state")},
+                   "dataset_id": cfg.get("dataset_id") or "nasa"},
         "metrics": result["metrics"],
         "feature_importance": result["feature_importance"],
         "train_feature_medians": result["train_feature_medians"],
         "n_train": result["n_train"],
         "n_test": result["n_test"],
         "warnings": result["warnings"],
-        "dataset": {"file": config.PROCESSED_FILE.name, "sha256_16": dataset_sha},
+        "dataset": {"id": cfg.get("dataset_id") or "nasa", "file": config.PROCESSED_FILE.name,
+                    "sha256_16": dataset_sha, **(dataset_info or {})},
         "environment": environment_info(),
         "artifacts": {"model": "model.joblib", "predictions": "predictions.csv"},
     }

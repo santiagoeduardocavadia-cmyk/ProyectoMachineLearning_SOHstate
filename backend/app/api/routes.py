@@ -6,10 +6,11 @@ import math
 from typing import Any, Optional
 
 import pandas as pd
-from fastapi import APIRouter, File, Query, UploadFile
-from fastapi.responses import FileResponse
+from fastapi import APIRouter, File, Form, Query, UploadFile
+from fastapi.responses import FileResponse, PlainTextResponse
 
 from app import __version__, config
+from app.data import dataset as ds
 from app.data.dataset import battery_ids, dataset_fingerprint, get_dataset, require_battery
 from app.data.features import FEATURES, TARGETS
 from app.errors import AppError
@@ -21,6 +22,19 @@ from app.schemas import ExperimentCreate, PredictRequest
 router = APIRouter(prefix=config.API_PREFIX)
 
 MAX_UPLOAD_BYTES = 5 * 1024 * 1024
+MAX_DATASET_BYTES = 20 * 1024 * 1024
+DatasetQuery = Query("nasa", min_length=1, max_length=100, description="Dataset (ver GET /api/v1/datasets).")
+
+
+async def _read_upload(file: UploadFile, limit: int) -> bytes:
+    if file.filename and not file.filename.lower().endswith(".csv"):
+        raise AppError("invalid_file", "El archivo debe ser .csv", 415)
+    raw = await file.read(limit + 1)
+    if len(raw) > limit:
+        raise AppError("file_too_large", f"El CSV supera {limit // (1024 * 1024)} MB.", 413)
+    if not raw.strip():
+        raise AppError("invalid_file", "El CSV está vacío.", 422)
+    return raw
 
 
 def _clean(value: Any) -> Any:
@@ -42,6 +56,7 @@ def _summary(r: dict) -> dict:
     return {
         "id": r["id"], "name": r["name"], "created_at": r["created_at"], "status": r["status"],
         "target": r["config"]["target"], "model_type": r["config"]["model_type"],
+        "dataset_id": r["config"].get("dataset_id") or "nasa",
         "test_batteries": r["config"]["test_batteries"], "metrics_test": r["metrics"]["test"],
     }
 
@@ -59,8 +74,9 @@ def health():
 
 # ----------------------------------------------------------------------------- dataset
 @router.get("/dataset/summary", tags=["dataset"])
-def dataset_summary():
-    df = get_dataset()
+def dataset_summary(dataset_id: str = DatasetQuery):
+    meta = ds.dataset_meta(dataset_id)
+    df = get_dataset(dataset_id)
     batteries = []
     for b, g in df.groupby("battery_id"):
         eol = g["eol_cycle"].iloc[0]
@@ -70,18 +86,21 @@ def dataset_summary():
             "min_soh": float(g["soh"].min()), "eol_cycle": None if pd.isna(eol) else int(eol),
             "reaches_eol": not pd.isna(eol), "ambient_temperature": float(g["ambient_temperature"].iloc[0]),
         })
-    return {
-        "source": "NASA Prognostics Center of Excellence - Battery Data Set (B0005, B0006, B0007, B0018)",
-        "source_url": config.NASA_DATASET_URL,
+    is_nasa = meta["id"] == ds.DEFAULT_DATASET_ID
+    return _clean({
+        "dataset_id": meta["id"], "name": meta["name"],
+        "source": "NASA Prognostics Center of Excellence - Battery Data Set (B0005, B0006, B0007, B0018)"
+                  if is_nasa else "Dataset subido por el usuario",
+        "source_url": config.NASA_DATASET_URL if is_nasa else None,
         "n_rows": int(len(df)), "n_batteries": len(batteries),
-        "nominal_capacity_ah": config.NOMINAL_CAPACITY_AH, "eol_capacity_ah": config.EOL_CAPACITY_AH,
-        "sha256_16": dataset_fingerprint(), "batteries": batteries,
-    }
+        "nominal_capacity_ah": meta["nominal_capacity_ah"], "eol_capacity_ah": meta["eol_capacity_ah"],
+        "sha256_16": dataset_fingerprint(dataset_id), "batteries": batteries,
+    })
 
 
 @router.get("/dataset/features", tags=["dataset"])
-def dataset_features():
-    df = get_dataset()
+def dataset_features(dataset_id: str = DatasetQuery):
+    df = get_dataset(dataset_id)
     feats = []
     for f in FEATURES:
         s = df[f.name]
@@ -89,16 +108,18 @@ def dataset_features():
                       "min": float(s.min()), "max": float(s.max()), "mean": float(s.mean()),
                       "missing": int(s.isna().sum())})
     targets = [{"key": k, **v} for k, v in TARGETS.items()]
-    return {"features": feats, "targets": targets}
+    return _clean({"features": feats, "targets": targets})
 
 
 @router.get("/dataset/batteries/{battery_id}/degradation", tags=["dataset"])
-def battery_degradation(battery_id: str):
-    sub = require_battery(get_dataset(), battery_id)
+def battery_degradation(battery_id: str, dataset_id: str = DatasetQuery):
+    meta = ds.dataset_meta(dataset_id)
+    sub = require_battery(get_dataset(dataset_id), battery_id)
     eol = sub["eol_cycle"].iloc[0]
     return {
         "battery_id": battery_id,
-        "eol_capacity_ah": config.EOL_CAPACITY_AH,
+        "dataset_id": meta["id"],
+        "eol_capacity_ah": meta["eol_capacity_ah"],
         "eol_cycle": None if pd.isna(eol) else int(eol),
         "points": _records(sub[["cycle", "capacity_ah", "soh", "rul"]]),
     }
@@ -106,12 +127,44 @@ def battery_degradation(battery_id: str):
 
 @router.get("/dataset/cycles", tags=["dataset"])
 def dataset_cycles(battery_id: Optional[str] = Query(None), limit: int = Query(1000, ge=1, le=5000),
-                   offset: int = Query(0, ge=0)):
-    df = get_dataset()
+                   offset: int = Query(0, ge=0), dataset_id: str = DatasetQuery):
+    df = get_dataset(dataset_id)
     if battery_id:
         df = require_battery(df, battery_id)
     page = df.iloc[offset: offset + limit]
     return {"total": int(len(df)), "offset": offset, "limit": limit, "rows": _records(page)}
+
+
+# ----------------------------------------------------------------------------- datasets (v1.1)
+@router.get("/datasets", tags=["datasets"])
+def list_datasets():
+    return {"datasets": _clean(ds.list_datasets())}
+
+
+@router.get("/datasets/template", tags=["datasets"], response_class=PlainTextResponse)
+def dataset_template():
+    """CSV de ejemplo con el formato que acepta POST /datasets (3 filas reales de B0005)."""
+    return PlainTextResponse(ds.template_csv(), media_type="text/csv",
+                             headers={"Content-Disposition": 'attachment; filename="plantilla_dataset.csv"'})
+
+
+@router.post("/datasets", status_code=201, tags=["datasets"])
+async def upload_dataset(file: UploadFile = File(...),
+                         name: str = Form(..., min_length=1, max_length=80),
+                         nominal_capacity_ah: Optional[float] = Form(None),
+                         eol_capacity_ah: Optional[float] = Form(None)):
+    raw = await _read_upload(file, MAX_DATASET_BYTES)
+    return _clean(ds.save_upload(raw, name.strip(), nominal_capacity_ah, eol_capacity_ah))
+
+
+@router.get("/datasets/{dataset_id}", tags=["datasets"])
+def get_dataset_info(dataset_id: str):
+    return _clean(ds.describe(dataset_id))
+
+
+@router.delete("/datasets/{dataset_id}", status_code=204, tags=["datasets"])
+def delete_dataset(dataset_id: str):
+    ds.delete_dataset(dataset_id)
 
 
 # ----------------------------------------------------------------------------- modelos
@@ -126,16 +179,22 @@ def list_models():
 # ----------------------------------------------------------------------------- experimentos
 @router.post("/experiments", status_code=201, tags=["experimentos"])
 def create_experiment(body: ExperimentCreate):
-    df = get_dataset()
+    meta = ds.dataset_meta(body.dataset_id)
+    df = get_dataset(body.dataset_id)
     result = train_experiment(df, body.model_dump())
-    return _clean(store.save(result, dataset_sha=dataset_fingerprint()))
+    info = {"name": meta["name"], "file": ds.dataset_path(body.dataset_id).name,
+            "nominal_capacity_ah": meta["nominal_capacity_ah"], "eol_capacity_ah": meta["eol_capacity_ah"]}
+    return _clean(store.save(result, dataset_sha=dataset_fingerprint(body.dataset_id), dataset_info=info))
 
 
 @router.get("/experiments", tags=["experimentos"])
-def list_experiments(target: Optional[str] = Query(None, pattern="^(soh|rul|capacity)$")):
+def list_experiments(target: Optional[str] = Query(None, pattern="^(soh|rul|capacity)$"),
+                     dataset_id: Optional[str] = Query(None)):
     recs = store.list_records()
     if target:
         recs = [r for r in recs if r["config"]["target"] == target]
+    if dataset_id:
+        recs = [r for r in recs if (r["config"].get("dataset_id") or "nasa") == dataset_id]
     return {"experiments": [_clean(_summary(r)) for r in recs]}
 
 
@@ -183,13 +242,7 @@ def predict(experiment_id: str, body: PredictRequest):
 
 @router.post("/experiments/{experiment_id}/predict/csv", tags=["inferencia"])
 async def predict_csv(experiment_id: str, file: UploadFile = File(...)):
-    if file.filename and not file.filename.lower().endswith(".csv"):
-        raise AppError("invalid_file", "El archivo debe ser .csv", 415)
-    raw = await file.read(MAX_UPLOAD_BYTES + 1)
-    if len(raw) > MAX_UPLOAD_BYTES:
-        raise AppError("file_too_large", "El CSV supera 5 MB.", 413)
-    if not raw.strip():
-        raise AppError("invalid_file", "El CSV está vacío.", 422)
+    raw = await _read_upload(file, MAX_UPLOAD_BYTES)
     try:
         df = pd.read_csv(io.BytesIO(raw))
     except Exception as exc:  # noqa: BLE001 - cualquier fallo de parseo es entrada inválida
@@ -201,9 +254,15 @@ async def predict_csv(experiment_id: str, file: UploadFile = File(...)):
     bad = [c for c in non_numeric if c in rec["config"]["features"]]
     if bad:
         raise AppError("invalid_file", f"Columnas no numéricas: {bad}", 422)
-    numeric = df.drop(columns=non_numeric)
+    target_col = {"soh": "soh", "rul": "rul", "capacity": "capacity_ah"}[rec["config"]["target"]]
+    actuals = None
+    if target_col in df.columns and target_col not in non_numeric:
+        actuals = [None if pd.isna(v) else float(v) for v in df[target_col]]
+    numeric = df.drop(columns=non_numeric).drop(columns=[target_col], errors="ignore")
     samples = [{k: (None if pd.isna(v) else float(v)) for k, v in row.items()} for row in numeric.to_dict("records")]
-    result = inference.predict(experiment_id, samples=samples)
+    result = inference.predict(experiment_id, samples=samples, actuals=actuals)
+    if actuals is None:
+        result["warnings"].append(f"El CSV no trae la columna '{target_col}': no se calculan métricas.")
     if "battery_id" in df.columns:
         for item, b in zip(result["predictions"], df["battery_id"].astype(str)):
             item["battery_id"] = b

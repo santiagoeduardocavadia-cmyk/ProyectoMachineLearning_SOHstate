@@ -66,3 +66,10 @@ Los modelos de árboles **no extrapolan** (su predicción se aplana al final de 
 Por eso Ridge gana en este split pese a ser más simple: es una limitación conocida de los árboles, no un error.
 
 Variable más importante en SOH: `time_to_3_5v`, seguida de `time_to_temp_max`.
+
+## 8. Datasets propios (API v1.1)
+Un CSV subido con `POST /api/v1/datasets` pasa por el mismo tratamiento que el dataset NASA:
+validación de tipos y ciclos repetidos, descarte de capacidades imposibles (`clean`) y cálculo de SOH/RUL (`add_targets`)
+con la capacidad nominal y el umbral de EOL declarados al subirlo (por defecto 2.0 Ah y 70 % de la nominal).
+Los objetivos que traiga el archivo se ignoran: así todas las fuentes usan exactamente la misma definición de SOH y RUL.
+Las características ausentes quedan vacías y el entrenamiento solo usa las que tienen datos.
