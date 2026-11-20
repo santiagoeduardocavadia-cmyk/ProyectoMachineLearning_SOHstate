@@ -2,7 +2,7 @@
 
 > **Para ChatGPT:** este documento es tu contexto completo. Tú construyes **solo el frontend** (carpeta `frontend/`).
 > El backend ya existe, lo mantiene Claude y se consume **únicamente** por HTTP con el contrato de abajo.
-> Versión del contrato: **API v1.1.0** (prefijo `/api/v1`). Novedades de v1.1.0 en la sección 4.3. Repositorio:
+> Versión del contrato: **API v1.1.1** (prefijo `/api/v1`). Novedades de v1.1.0 en la sección 4.3. Repositorio:
 > https://github.com/santiagoeduardocavadia-cmyk/ProyectoMachineLearning_SOHstate
 
 ---
@@ -368,6 +368,7 @@ La respuesta de `POST /experiments/{id}/predict` y `/predict/csv` trae el campo 
 (`{mae, rmse, r2, mape_pct, n}` o `null`):
 - Por batería (`battery_id`) se calcula siempre contra el valor real del dataset.
 - En `/predict/csv` se calcula si el CSV trae la columna del objetivo (`soh`, `rul` o `capacity_ah`). Entonces `actual` deja de ser `null`.
+  Para `soh`, si falta la columna `soh` pero viene `capacity_ah`, el SOH real se calcula como `capacity_ah / nominal` (v1.1.1).
   Si no la trae, `metrics` es `null` y aparece una advertencia en `warnings`.
 
 ## 5. Qué debe tener el frontend (requisitos del curso)
@@ -430,3 +431,4 @@ Commits pequeños y frecuentes, en español, y que el proyecto corra después de
 |---|---|---|
 | 1.0.0 | 2026-11-20 | Versión inicial |
 | 1.1.0 | 2026-11-20 | Subida de datasets propios (`/datasets`), `dataset_id` en experimentos y en `/dataset/*`, `metrics` en inferencia |
+| 1.1.1 | 2026-11-20 | `/predict/csv` deriva el SOH real de `capacity_ah` si falta la columna `soh` |
