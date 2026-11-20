@@ -12,6 +12,8 @@ hacer inferencia y guardar cada experimento (configuración, métricas, predicci
 
 Contrato entre ambos y reglas de colaboración: **[CONTEXTO_CHATGPT.md](CONTEXTO_CHATGPT.md)**.
 Metodología y preprocesamiento: **[backend/docs/PREPROCESAMIENTO.md](backend/docs/PREPROCESAMIENTO.md)**.
+Informe técnico (arquitectura, requerimientos, validación, ética): **[docs/INFORME_TECNICO.md](docs/INFORME_TECNICO.md)**.
+Guion de sustentación: **[docs/GUION_SUSTENTACION.md](docs/GUION_SUSTENTACION.md)**.
 
 ## Levantar el backend
 
