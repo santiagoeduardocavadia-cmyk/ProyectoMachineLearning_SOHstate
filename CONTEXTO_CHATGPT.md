@@ -2,7 +2,7 @@
 
 > **Para ChatGPT:** este documento es tu contexto completo. Tú construyes **solo el frontend** (carpeta `frontend/`).
 > El backend ya existe, lo mantiene Claude y se consume **únicamente** por HTTP con el contrato de abajo.
-> Versión del contrato: **API v1.2.0** (prefijo `/api/v1`). Novedades de v1.1.0 en la sección 4.3 y de v1.2.0 en la 4.4. Repositorio:
+> Versión del contrato: **API v1.3.0** (prefijo `/api/v1`). Novedades de v1.1.0 en la sección 4.3, de v1.2.0 en la 4.4 y de v1.3.0 en la 4.5. Repositorio:
 > https://github.com/santiagoeduardocavadia-cmyk/ProyectoMachineLearning_SOHstate
 
 ---
@@ -443,6 +443,21 @@ elegido con `reason` y una tabla de `candidates` (nombre, dataset, estado de dom
 `referencia_multitemp_soh_gradient_boosting`, `referencia_multitemp_soh_random_forest`, `referencia_multitemp_soh_ridge`
 (test: B0006 a 24 °C, B0031 a 43 °C y B0047 a 4 °C) y `referencia_multitemp_soh_sin_43C` (test: todas las celdas a 43 °C).
 
+### 4.5 Novedades v1.3.0: celdas parecidas y pestaña "Predecir"
+`POST /api/v1/predict/auto` añade a su respuesta (campos nuevos, compatibles):
+```json
+"similar_cells": [
+  {"battery_id": "B0029", "distance": 0.144, "ambient_temperature": 43.0, "discharge_current_a": 3.97,
+   "n_cycles": 40, "soh_initial": 0.849, "soh_final": 0.806},
+  ... hasta 5, de más a menos parecida
+],
+"selection": { ..., "similar_cells_summary": "Tu batería se parece más a B0029 a 43 °C (y a B0030, B0032) entre las celdas de entrenamiento." }
+```
+- Son las celdas **reales de entrenamiento** del experimento elegido cuyo perfil de características se parece más al CSV.
+  `distance` es la media de |Δz|: menor es más parecida. Como en la selección del modelo, **no se usa el valor real**.
+- Una celda nueva no "es" ninguna de las entrenadas. Por eso el texto dice "se parece a", no "es".
+- **UI:** una pestaña de primer nivel **Predecir** que use solo este endpoint, sin elegir experimento (ver sección 5, punto 11).
+
 ## 5. Qué debe tener el frontend (requisitos del curso)
 
 1. **Datos:** resumen del dataset, tabla de baterías y curva de degradación (capacidad vs ciclo con la línea de EOL).
@@ -458,6 +473,10 @@ elegido con `reason` y una tabla de `candidates` (nombre, dataset, estado de dom
 10. **(v1.2) Fiabilidad fuera de rango:** aviso de `domain` en toda inferencia, columna `domain_status`,
     opción "Selección automática" (`/predict/auto`), campo `test_temperatures` en el formulario de entrenamiento
     y tabla `metrics.per_temperature` en el detalle del experimento.
+11. **(v1.3) Pestaña "Predecir"** en el menú principal (entre Experimentos y Metodología): subir un CSV y llamar a
+    `POST /predict/auto`. Mostrar el modelo elegido y su `reason`, las `similar_cells` ("tu batería se parece a…"),
+    el aviso `domain`, las `metrics` si existen, el gráfico predicho vs real por ciclo, la tabla de predicciones y, en
+    un desplegable, los `candidates`.
 
 ## 6. Reglas de colaboración (para no cruzarnos)
 
@@ -508,3 +527,4 @@ Commits pequeños y frecuentes, en español, y que el proyecto corra después de
 | 1.1.0 | 2026-11-20 | Subida de datasets propios (`/datasets`), `dataset_id` en experimentos y en `/dataset/*`, `metrics` en inferencia |
 | 1.1.1 | 2026-11-20 | `/predict/csv` deriva el SOH real de `capacity_ah` si falta la columna `soh` |
 | 1.2.0 | 2026-11-23 | Dataset `nasa_multitemp`, características `ambient_temperature` y `discharge_current_a`, `test_temperatures`, `metrics.per_temperature`, CV por celda física, `domain` en inferencia y `POST /predict/auto` |
+| 1.3.0 | 2026-11-23 | `similar_cells` y `selection.similar_cells_summary` en `POST /predict/auto` (pestaña "Predecir") |
