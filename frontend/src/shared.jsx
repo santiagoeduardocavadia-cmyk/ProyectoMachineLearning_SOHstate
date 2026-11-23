@@ -10,6 +10,10 @@ export const targetName = {
   rul: "Vida útil restante",
   capacity: "Capacidad",
 };
+export const quantities = (values, unit) =>
+  values?.length
+    ? values.map((value) => num(value) + " " + unit).join(" · ")
+    : "—";
 export const unit = { soh: "%", rul: "ciclos", capacity: "Ah" };
 export const scale = (value, target) =>
   value == null ? null : target === "soh" ? value * 100 : value;

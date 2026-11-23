@@ -13,6 +13,7 @@ import {
   measure,
   num,
   ochre,
+  quantities,
   scale,
   series,
   targetName,
@@ -123,6 +124,23 @@ function Metrics({ experiment: e }) {
             score(k, m.train[k]),
           ])}
         />
+        {m.per_temperature && Object.keys(m.per_temperature).length > 0 && (
+          <>
+            <h3>Métricas por temperatura de prueba</h3>
+            <Table
+              label="Métricas por temperatura de prueba"
+              headers={["Temperatura (°C)", "MAE", "RMSE", "R²"]}
+              rows={Object.entries(m.per_temperature)
+                .sort(([a], [b]) => Number(a) - Number(b))
+                .map(([temperature, values]) => [
+                  num(Number(temperature)),
+                  score("mae", values.mae),
+                  score("rmse", values.rmse),
+                  score("r2", values.r2),
+                ])}
+            />
+          </>
+        )}
         <h3>Validación cruzada</h3>
         {cv ? (
           <>
@@ -152,6 +170,26 @@ function Metrics({ experiment: e }) {
           {[
             ["Modelo", e.config.model_type],
             ["Objetivo", targetName[t]],
+            ...(e.domain
+              ? [
+                  [
+                    "Temperaturas de entrenamiento",
+                    quantities(e.domain.temperatures, "°C"),
+                  ],
+                  [
+                    "Corrientes de entrenamiento",
+                    quantities(e.domain.currents, "A"),
+                  ],
+                ]
+              : []),
+            ...(e.config.test_temperatures?.length
+              ? [
+                  [
+                    "Temperaturas reservadas",
+                    quantities(e.config.test_temperatures, "°C"),
+                  ],
+                ]
+              : []),
             [
               "Entrenamiento",
               e.config.train_batteries.join(", ") +
@@ -313,7 +351,7 @@ function Charts({ experiment: e, path }) {
     </>
   );
 }
-export function Detail({ id }) {
+export function Detail({ id, supportsDomain }) {
   const path = "/experiments/" + encodeURIComponent(id);
   const detail = useApi(path);
   const [tab, setTab] = useState("Métricas");
@@ -368,7 +406,13 @@ export function Detail({ id }) {
             </div>
             {tab === "Métricas" && <Metrics experiment={e} />}
             {tab === "Gráficos" && <Charts experiment={e} path={path} />}
-            {tab === "Inferencia" && <Inference experiment={e} path={path} />}
+            {tab === "Inferencia" && (
+              <Inference
+                experiment={e}
+                path={path}
+                supportsDomain={supportsDomain}
+              />
+            )}
           </>
         )}
       </Load>

@@ -29,3 +29,9 @@ npm run preview
 - **Metodología** explica la separación por batería, la línea base, la validación cruzada, la selección de variables y el caso de B0007.
 
 La coordinación entre ramas y el contrato de datos se describen en [CONTEXTO_CHATGPT.md](../CONTEXTO_CHATGPT.md). Las peticiones de cambios al contrato se documentan en `frontend/PETICIONES_API.md` cuando se necesitan.
+
+## Fiabilidad y temperatura (API v1.2.0)
+
+En **Entrenamiento**, selecciona `nasa_multitemp` para explorar distintas condiciones. Puedes reservar una o más temperaturas de prueba, separadas por comas. La API aplica un margen de ±3 °C a cada valor. Al dejar el campo vacío se conserva la selección por batería. El detalle muestra las condiciones de entrenamiento y las métricas por temperatura cuando el experimento las incluye.
+
+En **Inferencia**, el aviso resume la fiabilidad del lote y cada predicción indica su propio estado. **Selección automática** compara los experimentos guardados para el objetivo elegido, muestra el modelo seleccionado y explica las exclusiones. Las predicciones siguen visibles cuando las condiciones quedan fuera del dominio de entrenamiento.

@@ -52,7 +52,7 @@ export function Datasets({ catalog, onChange }) {
 
   async function remove(dataset) {
     if (
-      dataset.id === "nasa" ||
+      dataset.source !== "upload" ||
       !window.confirm("¿Borrar el dataset «" + dataset.name + "»?")
     )
       return;
@@ -147,7 +147,7 @@ export function Datasets({ catalog, onChange }) {
                       {num(d.n_rows)} ciclos · {num(d.n_batteries)} baterías
                     </p>
                   </div>
-                  {d.id !== "nasa" && (
+                  {d.source === "upload" && (
                     <button
                       disabled={pending}
                       aria-label={"Borrar " + d.name}
