@@ -121,3 +121,15 @@ def test_dataset_subido_con_version_anterior_sin_corriente(client, tmp_path):
         "nominal_capacity_ah": 2.0, "eol_capacity_ah": 1.4, "warnings": []}), encoding="utf-8")
     exp = _train(client, dataset_id="up_antiguo", test_batteries=["B0006"])
     assert "discharge_current_a" not in exp["config"]["features"]
+
+
+def test_celdas_similares_en_seleccion_automatica(client):
+    _train(client, name="multi", dataset_id="nasa_multitemp", test_batteries=["B0006", "B0031", "B0047"])
+    for csv, temp in (("B0031", 43), ("B0047", 4)):
+        body = client.post("/api/v1/predict/auto", files={"file": ("b.csv", _csv_of(csv), "text/csv")},
+                           data={"target": "soh"}).json()
+        cells = body["similar_cells"]
+        assert len(cells) == 5 and cells[0]["distance"] <= cells[-1]["distance"]
+        assert csv not in {c["battery_id"] for c in cells}  # la celda de test no está en entrenamiento
+        assert all(abs(c["ambient_temperature"] - temp) <= 3 for c in cells[:3])
+        assert cells[0]["battery_id"] in body["selection"]["similar_cells_summary"]

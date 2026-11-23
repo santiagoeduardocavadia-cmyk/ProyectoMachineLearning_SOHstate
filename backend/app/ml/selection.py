@@ -16,12 +16,14 @@ from typing import Any, Callable
 import numpy as np
 import pandas as pd
 
+from app.data.dataset import get_dataset
 from app.errors import AppError
 from app.ml import domain, inference, store
 
 TIE_TOLERANCE = 0.10
 CONDITION_PENALTY = 2.0
 TARGET_COLUMNS = ("soh", "rul", "eol_cycle", "capacity_ah")
+N_SIMILAR = 5
 
 
 def _score(record: dict[str, Any], df: pd.DataFrame) -> dict[str, Any]:
@@ -61,6 +63,43 @@ def rank(df: pd.DataFrame, target: str) -> list[dict[str, Any]]:
     return ok + [c for c in scored if not c["eligible"]]
 
 
+def similar_cells(record: dict[str, Any], df: pd.DataFrame, n: int = N_SIMILAR) -> list[dict[str, Any]]:
+    """Celdas de entrenamiento del experimento elegido que más se parecen al CSV (v1.3.0).
+
+    Se compara el perfil medio estandarizado de las características (con el escalador del propio
+    modelo) del CSV contra el de cada celda real de entrenamiento: distancia = media de |Δz|.
+    No usa el valor real del objetivo. Una celda nueva no "es" ninguna de las entrenadas: esto dice
+    a cuáles se parece, que es lo que justifica (o no) confiar en la predicción.
+    """
+    feats = record["config"]["features"]
+    try:
+        data = get_dataset(record["config"].get("dataset_id") or "nasa")
+    except AppError:
+        return []
+    model = store.load_model(record["id"])
+    train = data[data["battery_id"].isin(record["config"]["train_batteries"])
+                 & ~data["battery_id"].map(domain.is_virtual)]
+    if train.empty:
+        return []
+    transform = model[:-1].transform
+    target = np.nanmean(np.asarray(transform(df[feats].apply(pd.to_numeric, errors="coerce").astype(float)),
+                                   dtype=float), axis=0)
+    out = []
+    for b, g in train.groupby("battery_id"):
+        prof = np.nanmean(np.asarray(transform(g[feats].astype(float)), dtype=float), axis=0)
+        temp, cur = g["ambient_temperature"].median(), g["discharge_current_a"].median()
+        out.append({
+            "battery_id": b,
+            "distance": float(np.nanmean(np.abs(target - prof))),
+            "ambient_temperature": None if pd.isna(temp) else float(temp),
+            "discharge_current_a": None if pd.isna(cur) else round(float(cur), 2),
+            "n_cycles": int(len(g)),
+            "soh_initial": float(g["soh"].iloc[0]) if g["soh"].notna().any() else None,
+            "soh_final": float(g["soh"].iloc[-1]) if g["soh"].notna().any() else None,
+        })
+    return sorted(out, key=lambda c: c["distance"])[:n]
+
+
 def predict_auto(df: pd.DataFrame, target: str, predict_frame: Callable[[str, pd.DataFrame], dict]) -> dict[str, Any]:
     candidates = rank(df, target)
     eligible = [c for c in candidates if c["eligible"]]
@@ -80,4 +119,12 @@ def predict_auto(df: pd.DataFrame, target: str, predict_frame: Callable[[str, pd
         "reason": reason + ".",
         "candidates": candidates[:50],
     }
+    record = store.load_record(chosen["experiment_id"])
+    result["similar_cells"] = similar_cells(record, df)
+    if result["similar_cells"]:
+        best = result["similar_cells"][0]
+        t = f" a {best['ambient_temperature']:g} °C" if best["ambient_temperature"] is not None else ""
+        result["selection"]["similar_cells_summary"] = (
+            f"Tu batería se parece más a {best['battery_id']}{t} (y a "
+            f"{', '.join(c['battery_id'] for c in result['similar_cells'][1:3])}) entre las celdas de entrenamiento.")
     return result
