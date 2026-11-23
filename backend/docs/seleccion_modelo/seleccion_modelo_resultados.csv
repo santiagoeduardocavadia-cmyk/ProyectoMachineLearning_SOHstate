@@ -1,0 +1,16 @@
+escenario,model,label,hyperparameters,cv_mae,cv_std,test_mae,rank,p_value,tied,chosen,fold_mae
+"SOH, multitemperatura (29 celdas, 4/24/43 °C)",random_forest,Random Forest,"{'n_estimators': 300, 'max_depth': None, 'min_samples_leaf': 5}",0.028012,0.011296,0.020054,1,,True,True,0.031073;0.029471;0.030757;0.011199;0.020923;0.011149;0.029048;0.03394;0.033417;0.049147
+"SOH, multitemperatura (29 celdas, 4/24/43 °C)",svr,Support Vector Regression (RBF),"{'C': 10.0, 'epsilon': 0.01}",0.030676,0.021307,0.014787,2,1,True,False,0.043923;0.07492;0.056793;0.010322;0.0128;0.014226;0.018126;0.022964;0.02392;0.028762
+"SOH, multitemperatura (29 celdas, 4/24/43 °C)",gradient_boosting,Gradient Boosting,"{'n_estimators': 300, 'learning_rate': 0.1, 'max_depth': 2, 'subsample': 0.8}",0.033307,0.015977,0.03217,3,0.27539,False,False,0.035746;0.048732;0.064174;0.013302;0.016301;0.014276;0.037285;0.034091;0.03075;0.03841
+"SOH, multitemperatura (29 celdas, 4/24/43 °C)",ridge,Regresión lineal (Ridge),{'alpha': 0.1},0.039497,0.019183,0.020952,4,0.13086,False,False,0.05957;0.068005;0.068872;0.024339;0.021648;0.022285;0.022063;0.041516;0.031787;0.034885
+"SOH, multitemperatura (29 celdas, 4/24/43 °C)",knn,K vecinos más cercanos,{'n_neighbors': 10},0.043123,0.02486,0.030349,5,0.0019531,False,False,0.033582;0.10726;0.044107;0.017391;0.022128;0.029528;0.043757;0.0434;0.039525;0.050549
+"SOH, NASA original (4 celdas a 24 °C)",ridge,Regresión lineal (Ridge),{'alpha': 1.0},0.0049971,0.003885,0.01953,1,,True,True,0.0036676;0.0019515;0.0093723
+"SOH, NASA original (4 celdas a 24 °C)",gradient_boosting,Gradient Boosting,"{'n_estimators': 300, 'learning_rate': 0.1, 'max_depth': 3, 'subsample': 0.8}",0.0081911,0.0021605,0.031359,2,0.5,False,False,0.010492;0.0078767;0.0062049
+"SOH, NASA original (4 celdas a 24 °C)",random_forest,Random Forest,"{'n_estimators': 300, 'max_depth': None, 'min_samples_leaf': 2}",0.010988,0.0013828,0.030055,3,0.25,False,False,0.011129;0.0095395;0.012294
+"SOH, NASA original (4 celdas a 24 °C)",knn,K vecinos más cercanos,{'n_neighbors': 20},0.024767,0.0052116,0.043322,4,0.25,False,False,0.021304;0.022237;0.030761
+"SOH, NASA original (4 celdas a 24 °C)",svr,Support Vector Regression (RBF),"{'C': 1.0, 'epsilon': 0.01}",0.043992,0.030986,0.076535,5,0.25,False,False,0.023532;0.028801;0.079642
+"RUL, NASA original (B0007 no llega al fin de vida)",knn,K vecinos más cercanos,{'n_neighbors': 20},13.976,2.9971,11.536,1,,True,True,11.857;16.095
+"RUL, NASA original (B0007 no llega al fin de vida)",random_forest,Random Forest,"{'n_estimators': 300, 'max_depth': None, 'min_samples_leaf': 2}",15.537,0.097055,9.4342,2,1,True,False,15.606;15.468
+"RUL, NASA original (B0007 no llega al fin de vida)",gradient_boosting,Gradient Boosting,"{'n_estimators': 300, 'learning_rate': 0.1, 'max_depth': 2, 'subsample': 0.8}",16.547,1.3763,8.5033,3,0.5,False,False,15.574;17.52
+"RUL, NASA original (B0007 no llega al fin de vida)",ridge,Regresión lineal (Ridge),{'alpha': 10.0},16.667,12.452,9.8999,4,1,False,False,7.8625;25.472
+"RUL, NASA original (B0007 no llega al fin de vida)",svr,Support Vector Regression (RBF),"{'C': 1.0, 'epsilon': 1.0}",30.931,5.3498,21.35,5,0.5,False,False,34.714;27.148

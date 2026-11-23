@@ -2,7 +2,7 @@
   "id": "referencia_soh_ridge",
   "name": "Referencia SOH - Ridge (test B0006)",
   "description": "Comparación lineal: extrapola mejor que los árboles por debajo del SOH mínimo visto en entrenamiento.",
-  "created_at": "2026-11-23T06:10:51+00:00",
+  "created_at": "2026-11-23T18:50:01+00:00",
   "status": "completed",
   "config": {
     "target": "soh",
@@ -78,7 +78,7 @@
       "r2_mean": 0.9925345777930663,
       "r2_std": 0.007828660728921492
     },
-    "train_seconds": 0.0044,
+    "train_seconds": 0.0048,
     "per_temperature": {
       "24": {
         "mae": 0.01952982444277867,
