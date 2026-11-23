@@ -11,7 +11,7 @@ from app import config
 from app.data.dataset import get_dataset, require_battery, target_column
 from app.ml.training import regression_metrics
 from app.errors import AppError
-from app.ml import store
+from app.ml import domain, store
 
 
 def health_status(soh: float) -> str:
@@ -44,6 +44,21 @@ def _samples_frame(samples: list[dict[str, Any]], features: list[str]) -> tuple[
     if n_null:
         warnings.append(f"{n_null} valores nulos se imputaron con la mediana del entrenamiento.")
     return frame, warnings
+
+
+def domain_reference(record: dict[str, Any], model) -> dict[str, Any] | None:
+    """Referencia de dominio guardada; para experimentos anteriores a v1.2 se recalcula desde su dataset."""
+    if record.get("domain"):
+        return record["domain"]
+    try:
+        df = get_dataset(record["config"].get("dataset_id") or "nasa")
+    except AppError:
+        return None
+    train = df[df["battery_id"].isin(record["config"]["train_batteries"])]
+    feats = record["config"]["features"]
+    if train.empty or any(f not in train.columns for f in feats):
+        return None
+    return domain.build_reference(model, train[feats].astype(float))
 
 
 def predict(experiment_id: str, *, samples: list[dict] | None = None, battery_id: str | None = None,
@@ -82,9 +97,16 @@ def predict(experiment_id: str, *, samples: list[dict] | None = None, battery_id
     if target == "rul":
         y = np.clip(y, 0, None)
 
+    reference = domain_reference(record, model)
+    domain_summary = None
+    domain_rows: list[dict[str, Any]] = [{} for _ in range(len(X))]
+    if reference is not None:
+        domain_rows, domain_summary, dom_warnings = domain.assess(model, reference, X)
+        warnings.extend(dom_warnings)
+
     out = []
-    for m, pred, real in zip(meta, y, y_true):
-        item = {**m, "prediction": float(pred), "actual": real}
+    for m, pred, real, dom in zip(meta, y, y_true, domain_rows):
+        item = {**m, "prediction": float(pred), "actual": real, **dom}
         if target == "soh":
             item["capacity_ah_estimated"] = float(pred) * nominal
             item["health_status"] = health_status(float(pred))
@@ -105,5 +127,6 @@ def predict(experiment_id: str, *, samples: list[dict] | None = None, battery_id
         "unit": {"soh": "fracción (0-1)", "rul": "ciclos", "capacity": "Ah"}[target],
         "features_used": features,
         "predictions": out,
+        "domain": domain_summary,
         "warnings": warnings,
     }

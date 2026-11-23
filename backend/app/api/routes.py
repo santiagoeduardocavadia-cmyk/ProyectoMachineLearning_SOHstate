@@ -14,7 +14,7 @@ from app.data import dataset as ds
 from app.data.dataset import battery_ids, dataset_fingerprint, get_dataset, require_battery
 from app.data.features import FEATURES, TARGETS
 from app.errors import AppError
-from app.ml import inference, store
+from app.ml import inference, selection, store
 from app.ml.models import MODELS
 from app.ml.training import train_experiment
 from app.schemas import ExperimentCreate, PredictRequest
@@ -85,11 +85,12 @@ def dataset_summary(dataset_id: str = DatasetQuery):
             "initial_capacity_ah": float(g["capacity_ah"].iloc[0]), "final_capacity_ah": float(g["capacity_ah"].iloc[-1]),
             "min_soh": float(g["soh"].min()), "eol_cycle": None if pd.isna(eol) else int(eol),
             "reaches_eol": not pd.isna(eol), "ambient_temperature": float(g["ambient_temperature"].iloc[0]),
+            "discharge_current_a": float(g["discharge_current_a"].median()),
         })
-    is_nasa = meta["id"] == ds.DEFAULT_DATASET_ID
+    is_nasa = meta["id"] in ds.BUILTIN_DATASETS
     return _clean({
         "dataset_id": meta["id"], "name": meta["name"],
-        "source": "NASA Prognostics Center of Excellence - Battery Data Set (B0005, B0006, B0007, B0018)"
+        "source": f"NASA Prognostics Center of Excellence - Battery Data Set ({meta['name']})"
                   if is_nasa else "Dataset subido por el usuario",
         "source_url": config.NASA_DATASET_URL if is_nasa else None,
         "n_rows": int(len(df)), "n_batteries": len(batteries),
@@ -240,15 +241,18 @@ def predict(experiment_id: str, body: PredictRequest):
                                     cycles=body.cycles))
 
 
-@router.post("/experiments/{experiment_id}/predict/csv", tags=["inferencia"])
-async def predict_csv(experiment_id: str, file: UploadFile = File(...)):
-    raw = await _read_upload(file, MAX_UPLOAD_BYTES)
+def _read_csv(raw: bytes) -> pd.DataFrame:
     try:
         df = pd.read_csv(io.BytesIO(raw))
     except Exception as exc:  # noqa: BLE001 - cualquier fallo de parseo es entrada inválida
         raise AppError("invalid_file", f"No se pudo leer el CSV: {exc}", 422) from exc
     if df.empty:
         raise AppError("invalid_file", "El CSV no tiene filas.", 422)
+    df.columns = [str(c).strip() for c in df.columns]
+    return df
+
+
+def _predict_frame(experiment_id: str, df: pd.DataFrame) -> dict:
     non_numeric = [c for c in df.columns if not pd.api.types.is_numeric_dtype(df[c])]
     rec = store.load_record(experiment_id)
     bad = [c for c in non_numeric if c in rec["config"]["features"]]
@@ -263,6 +267,8 @@ async def predict_csv(experiment_id: str, file: UploadFile = File(...)):
         nominal = float(rec.get("dataset", {}).get("nominal_capacity_ah") or config.NOMINAL_CAPACITY_AH)
         actuals = [None if pd.isna(v) else float(v) / nominal for v in df["capacity_ah"]]
     numeric = df.drop(columns=non_numeric).drop(columns=[target_col, "capacity_ah"], errors="ignore")
+    # El valor real nunca entra al modelo ni a la medida de dominio.
+    numeric = numeric.drop(columns=[c for c in ("soh", "rul", "eol_cycle") if c in numeric], errors="ignore")
     samples = [{k: (None if pd.isna(v) else float(v)) for k, v in row.items()} for row in numeric.to_dict("records")]
     result = inference.predict(experiment_id, samples=samples, actuals=actuals)
     if actuals is None:
@@ -273,4 +279,19 @@ async def predict_csv(experiment_id: str, file: UploadFile = File(...)):
     if "cycle" in df.columns:
         for item, c in zip(result["predictions"], df["cycle"]):
             item["cycle"] = None if pd.isna(c) else int(c)
-    return _clean(result)
+    return result
+
+
+@router.post("/experiments/{experiment_id}/predict/csv", tags=["inferencia"])
+async def predict_csv(experiment_id: str, file: UploadFile = File(...)):
+    raw = await _read_upload(file, MAX_UPLOAD_BYTES)
+    return _clean(_predict_frame(experiment_id, _read_csv(raw)))
+
+
+@router.post("/predict/auto", tags=["inferencia"])
+async def predict_auto(file: UploadFile = File(...),
+                       target: str = Form("soh", pattern="^(soh|rul|capacity)$")):
+    """(v1.2) Elige el experimento cuyo dominio de entrenamiento más se parece al CSV y predice con él."""
+    raw = await _read_upload(file, MAX_UPLOAD_BYTES)
+    df = _read_csv(raw)
+    return _clean(selection.predict_auto(df, target, _predict_frame))

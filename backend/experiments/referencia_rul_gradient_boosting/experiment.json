@@ -2,7 +2,7 @@
   "id": "referencia_rul_gradient_boosting",
   "name": "Referencia RUL - Gradient Boosting (test B0006)",
   "description": "RUL en ciclos; B0007 se excluye por no alcanzar el fin de vida.",
-  "created_at": "2026-11-20T18:12:29+00:00",
+  "created_at": "2026-11-23T06:10:52+00:00",
   "status": "completed",
   "config": {
     "target": "rul",
@@ -36,7 +36,9 @@
     "test_batteries": [
       "B0006"
     ],
-    "random_state": 42
+    "random_state": 42,
+    "test_temperatures": null,
+    "dataset_id": "nasa"
   },
   "metrics": {
     "train": {
@@ -70,7 +72,7 @@
       }
     },
     "cv": {
-      "strategy": "leave-one-battery-out (2 pliegues)",
+      "strategy": "leave-one-cell-out (2 pliegues)",
       "mae_mean": 20.411478581807877,
       "mae_std": 1.0159934384163662,
       "rmse_mean": 21.847016811687734,
@@ -78,7 +80,16 @@
       "r2_mean": 0.5221558168699445,
       "r2_std": 0.07778994733089922
     },
-    "train_seconds": 0.3003
+    "train_seconds": 0.1705,
+    "per_temperature": {
+      "24": {
+        "mae": 11.359272026629146,
+        "rmse": 12.978157927261075,
+        "r2": 0.8298660775909803,
+        "mape_pct": 31.51204437614715,
+        "n": 109
+      }
+    }
   },
   "feature_importance": [
     {
@@ -168,14 +179,82 @@
     "re_ohm": 0.0598533,
     "rct_ohm": 0.0848558
   },
+  "domain": {
+    "distance_p95": 1.258374539003155,
+    "distance_median": 0.8417242529551436,
+    "feature_ranges": {
+      "cycle": [
+        2.0,
+        122.78999999999999
+      ],
+      "v_mean": [
+        3.4775952,
+        3.581773
+      ],
+      "v_std": [
+        0.21134912,
+        0.26618369999999997
+      ],
+      "time_to_3_8v": [
+        228.99697,
+        499.50109000000003
+      ],
+      "time_to_3_5v": [
+        1167.8752,
+        2173.8764
+      ],
+      "v_at_500s": [
+        3.6927322,
+        3.7998585
+      ],
+      "temp_max": [
+        36.486758,
+        41.265901
+      ],
+      "time_to_temp_max": [
+        2550.6403,
+        3350.7174
+      ],
+      "temp_rise": [
+        13.364417999999999,
+        16.518701
+      ],
+      "cc_charge_time": [
+        123.5000000000001,
+        3235.07
+      ],
+      "cv_charge_time": [
+        4221.136,
+        8606.968000000004
+      ],
+      "charge_temp_max": [
+        24.5064,
+        35.50716
+      ],
+      "re_ohm": [
+        0.044176942,
+        0.0654313
+      ],
+      "rct_ohm": [
+        0.067973548,
+        0.0920188
+      ]
+    },
+    "temperatures": [],
+    "currents": []
+  },
   "n_train": 222,
   "n_test": 109,
   "warnings": [
     "Baterías sin fin de vida observado (RUL desconocido) excluidas: ['B0007']."
   ],
   "dataset": {
+    "id": "nasa",
     "file": "nasa_battery_cycles.csv",
-    "sha256_16": "34169ce7ec688b5f"
+    "sha256_16": "d689be99e9b7d54c",
+    "name": "NASA PCoE Battery Data Set (B0005, B0006, B0007, B0018)",
+    "nominal_capacity_ah": 2.0,
+    "eol_capacity_ah": 1.4
   },
   "environment": {
     "python": "3.13.18",

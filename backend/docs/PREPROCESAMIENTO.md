@@ -75,7 +75,7 @@ Los objetivos que traiga el archivo se ignoran: así todas las fuentes usan exac
 Las características ausentes quedan vacías y el entrenamiento solo usa las que tienen datos.
 
 ## 9. Limpieza y aumento de datos (scripts, fuera de la API)
-El aumento se aplica a los **archivos de datos**, no dentro de la página: la API no cambia (v1.1.1).
+El aumento se aplica a los **archivos de datos**, no dentro de la página. Desde v1.2.0 el backend agrupa la CV por celda física, así que las copias aumentadas ya no inflan la CV (ver §10).
 Plan y decisiones: [docs/PLAN_MEDICIONES.md](../../docs/PLAN_MEDICIONES.md).
 
 ### 9.1 Limpieza: `python -m scripts.clean_cycles ENTRADA.csv`
@@ -99,5 +99,13 @@ Añade **baterías virtuales** a partir de las de entrenamiento:
 Reglas para no hacer trampa:
 - Las baterías de `--test` se copian sin tocar y no generan baterías virtuales. Al entrenar se usa **exactamente** ese test.
 - Si una celda física quedó partida en tramos de temperatura, **todos sus tramos** van a `--test`.
-- Con un CSV aumentado, la **validación cruzada y el error de train salen optimistas**, porque las baterías virtuales caen
-  en otros pliegues. La métrica válida es la de **test**.
+- Hasta v1.1.1, con un CSV aumentado la **validación cruzada y el error de train salían optimistas**, porque las baterías virtuales caían
+  en otros pliegues. Desde v1.2.0 la CV agrupa por celda física y el train solo cuenta celdas reales. La métrica principal sigue siendo la de **test**.
+
+## 10. Generalización a otras temperaturas y corrientes (v1.2.0)
+- Dataset `nasa_multitemp` (32 celdas, 4/24/43 °C, 1/2/4 A) y características `ambient_temperature` y `discharge_current_a`.
+- CV agrupada por **celda física** (`app/ml/domain.py::physical_cell`): `B0005~ruido1` y `B0042_04C` cuentan como `B0005` y `B0042`.
+  Si una celda está en test, sus otros tramos o copias se excluyen del entrenamiento, con una advertencia.
+- Dominio de validez en la inferencia y selección automática del modelo.
+
+La metodología y los resultados están en [GENERALIZACION.md](GENERALIZACION.md).

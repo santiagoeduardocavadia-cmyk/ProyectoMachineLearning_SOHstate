@@ -1,0 +1,382 @@
+{
+  "id": "referencia_multitemp_soh_sin_43C",
+  "name": "Multitemperatura SOH - Gradient Boosting, 43 °C nunca vista (test = todas las celdas a 43 °C)",
+  "description": "Entrenado solo a 4 y 24 °C. Mide qué pasa con una temperatura que el modelo no vio.",
+  "created_at": "2026-11-23T06:11:44+00:00",
+  "status": "completed",
+  "config": {
+    "target": "soh",
+    "model_type": "gradient_boosting",
+    "hyperparameters": {
+      "n_estimators": 300,
+      "learning_rate": 0.05,
+      "max_depth": 3,
+      "subsample": 0.8
+    },
+    "features": [
+      "cycle",
+      "ambient_temperature",
+      "discharge_current_a",
+      "v_mean",
+      "v_std",
+      "time_to_3_8v",
+      "time_to_3_5v",
+      "v_at_500s",
+      "temp_max",
+      "time_to_temp_max",
+      "temp_rise",
+      "cc_charge_time",
+      "cv_charge_time",
+      "charge_temp_max",
+      "re_ohm",
+      "rct_ohm"
+    ],
+    "train_batteries": [
+      "B0005",
+      "B0006",
+      "B0007",
+      "B0018",
+      "B0025",
+      "B0026",
+      "B0027",
+      "B0028",
+      "B0033",
+      "B0034",
+      "B0036",
+      "B0041",
+      "B0042_04C",
+      "B0042_22C",
+      "B0043_04C",
+      "B0043_22C",
+      "B0044_04C",
+      "B0044_22C",
+      "B0045",
+      "B0046",
+      "B0047",
+      "B0048",
+      "B0049",
+      "B0051",
+      "B0053",
+      "B0054",
+      "B0055",
+      "B0056"
+    ],
+    "test_batteries": [
+      "B0029",
+      "B0030",
+      "B0031",
+      "B0032",
+      "B0038_44C",
+      "B0039_44C",
+      "B0040_44C"
+    ],
+    "random_state": 42,
+    "test_temperatures": [
+      43.0
+    ],
+    "dataset_id": "nasa_multitemp"
+  },
+  "metrics": {
+    "train": {
+      "mae": 0.006481150397119641,
+      "rmse": 0.009487064292371308,
+      "r2": 0.9959279684994613,
+      "mape_pct": 1.003096976286263,
+      "n": 2227
+    },
+    "test": {
+      "mae": 0.04622411037382494,
+      "rmse": 0.05483937986623097,
+      "r2": -1.2816101122802515,
+      "mape_pct": 5.352987897921558,
+      "n": 263
+    },
+    "baseline_test": {
+      "mae": 0.15680846077264673,
+      "rmse": 0.1602728710517573,
+      "r2": -18.488409486734405,
+      "mape_pct": 18.05622862524952,
+      "n": 263
+    },
+    "per_battery": {
+      "B0029": {
+        "mae": 0.023694141591752274,
+        "rmse": 0.03464268802765292,
+        "r2": -0.20005003166591018,
+        "mape_pct": 2.7198128025879056,
+        "n": 40
+      },
+      "B0030": {
+        "mae": 0.025874350350480184,
+        "rmse": 0.03657822184447639,
+        "r2": -0.47806063507448227,
+        "mape_pct": 3.1852468485865324,
+        "n": 40
+      },
+      "B0031": {
+        "mae": 0.038905423212966785,
+        "rmse": 0.04497507540529574,
+        "r2": -3.0852181867996284,
+        "mape_pct": 4.44725738266564,
+        "n": 40
+      },
+      "B0032": {
+        "mae": 0.040432532091294625,
+        "rmse": 0.04930624262580418,
+        "r2": -1.119108012791438,
+        "mape_pct": 4.5328319908049055,
+        "n": 40
+      },
+      "B0038_44C": {
+        "mae": 0.07942543855951495,
+        "rmse": 0.0805825261841066,
+        "r2": -6.353923605110671,
+        "mape_pct": 9.050346260447073,
+        "n": 35
+      },
+      "B0039_44C": {
+        "mae": 0.051671923296743076,
+        "rmse": 0.05382837512224853,
+        "r2": 0.015466097135608647,
+        "mape_pct": 6.144349408701686,
+        "n": 35
+      },
+      "B0040_44C": {
+        "mae": 0.0730992567723386,
+        "rmse": 0.07438045679433324,
+        "r2": -25.018073794934708,
+        "mape_pct": 8.503500234768605,
+        "n": 33
+      }
+    },
+    "cv": {
+      "strategy": "GroupKFold por celda física, 25 celdas (10 pliegues)",
+      "mae_mean": 0.034971267268678406,
+      "mae_std": 0.016313580066224406,
+      "rmse_mean": 0.044266147574359746,
+      "rmse_std": 0.018313068938244925,
+      "r2_mean": 0.6377822534919199,
+      "r2_std": 0.4646548119855061
+    },
+    "train_seconds": 1.3607,
+    "per_temperature": {
+      "43": {
+        "mae": 0.032226611811623465,
+        "rmse": 0.04180892583130941,
+        "r2": -0.43956661457581725,
+        "mape_pct": 3.7212872561612453,
+        "n": 160
+      },
+      "44": {
+        "mae": 0.06796779746073985,
+        "rmse": 0.07045326482025464,
+        "r2": -2.3755747437859522,
+        "mape_pct": 7.887668506481267,
+        "n": 103
+      }
+    }
+  },
+  "feature_importance": [
+    {
+      "feature": "discharge_current_a",
+      "importance": 0.0174940635335462,
+      "std": 0.0010743867033753058
+    },
+    {
+      "feature": "time_to_temp_max",
+      "importance": 0.014419623863759006,
+      "std": 0.0012305826136977205
+    },
+    {
+      "feature": "cc_charge_time",
+      "importance": 0.008501194838870097,
+      "std": 0.0011526170833708522
+    },
+    {
+      "feature": "temp_max",
+      "importance": 0.004187672744756886,
+      "std": 0.00020426121690876584
+    },
+    {
+      "feature": "v_mean",
+      "importance": 0.002514700109285098,
+      "std": 0.00010312141773847431
+    },
+    {
+      "feature": "cycle",
+      "importance": 0.0010113525628835725,
+      "std": 0.00023845334032953716
+    },
+    {
+      "feature": "v_at_500s",
+      "importance": 0.00047416988549219203,
+      "std": 0.0001060865704125587
+    },
+    {
+      "feature": "time_to_3_8v",
+      "importance": 0.0001890499809006553,
+      "std": 8.564290386040172e-05
+    },
+    {
+      "feature": "ambient_temperature",
+      "importance": 0.0,
+      "std": 0.0
+    },
+    {
+      "feature": "charge_temp_max",
+      "importance": -0.0002043172339976737,
+      "std": 0.0001447050452502223
+    },
+    {
+      "feature": "v_std",
+      "importance": -0.0005946881896273966,
+      "std": 0.00012751374665343808
+    },
+    {
+      "feature": "time_to_3_5v",
+      "importance": -0.0006364015208300357,
+      "std": 0.00029591148459639046
+    },
+    {
+      "feature": "temp_rise",
+      "importance": -0.0008615060160778711,
+      "std": 0.0006678570777912385
+    },
+    {
+      "feature": "cv_charge_time",
+      "importance": -0.0012134349896386926,
+      "std": 0.00027117128617042005
+    },
+    {
+      "feature": "re_ohm",
+      "importance": -0.002659896256030577,
+      "std": 0.00016725992526111464
+    },
+    {
+      "feature": "rct_ohm",
+      "importance": -0.0030689404100359063,
+      "std": 0.00024160748069924608
+    }
+  ],
+  "train_feature_medians": {
+    "cycle": 56.0,
+    "ambient_temperature": 24.0,
+    "discharge_current_a": 1.98699,
+    "v_mean": 3.41138,
+    "v_std": 0.269117,
+    "time_to_3_8v": 129.636,
+    "time_to_3_5v": 1103.44,
+    "v_at_500s": 3.66082,
+    "temp_max": 37.4813,
+    "time_to_temp_max": 2765.3,
+    "temp_rise": 14.3467,
+    "cc_charge_time": 1808.0,
+    "cv_charge_time": 8343.23,
+    "charge_temp_max": 28.3654,
+    "re_ohm": 0.079214,
+    "rct_ohm": 0.125619
+  },
+  "domain": {
+    "distance_p95": 1.161997495698034,
+    "distance_median": 0.8327932091280297,
+    "feature_ranges": {
+      "cycle": [
+        2.0,
+        190.0
+      ],
+      "ambient_temperature": [
+        4.0,
+        24.0
+      ],
+      "discharge_current_a": [
+        0.98809882,
+        3.9727666
+      ],
+      "v_mean": [
+        2.9931164,
+        3.6778598
+      ],
+      "v_std": [
+        0.20709334,
+        0.48079873999999984
+      ],
+      "time_to_3_8v": [
+        16.05882,
+        881.6152799999948
+      ],
+      "time_to_3_5v": [
+        27.747894000000002,
+        4018.0285999999946
+      ],
+      "v_at_500s": [
+        3.047613,
+        3.9332207999999995
+      ],
+      "temp_max": [
+        10.468414000000001,
+        58.519374
+      ],
+      "time_to_temp_max": [
+        1290.4086,
+        6299.9212
+      ],
+      "temp_rise": [
+        4.0005462000000005,
+        33.981524
+      ],
+      "cc_charge_time": [
+        59.44224,
+        3311.5176
+      ],
+      "cv_charge_time": [
+        4691.2264,
+        10737.964
+      ],
+      "charge_temp_max": [
+        8.0510157,
+        37.349823
+      ],
+      "re_ohm": [
+        0.041615076,
+        0.128855
+      ],
+      "rct_ohm": [
+        0.064342844,
+        0.23487500000000033
+      ]
+    },
+    "temperatures": [
+      4.0,
+      22.0,
+      24.0
+    ],
+    "currents": [
+      1.0,
+      2.0,
+      4.0
+    ]
+  },
+  "n_train": 2227,
+  "n_test": 263,
+  "warnings": [
+    "Test = todas las baterías a [43.0] °C: ['B0029', 'B0030', 'B0031', 'B0032', 'B0038_44C', 'B0039_44C', 'B0040_44C']."
+  ],
+  "dataset": {
+    "id": "nasa_multitemp",
+    "file": "nasa_multitemp_cycles.csv",
+    "sha256_16": "73ab23936f1e4e07",
+    "name": "NASA PCoE completo: 32 celdas a 4, 24 y 43 °C (1, 2 y 4 A)",
+    "nominal_capacity_ah": 2.0,
+    "eol_capacity_ah": 1.4
+  },
+  "environment": {
+    "python": "3.13.18",
+    "scikit_learn": "1.9.1",
+    "numpy": "2.5.3",
+    "pandas": "3.0.5"
+  },
+  "artifacts": {
+    "model": "model.joblib",
+    "predictions": "predictions.csv"
+  }
+}

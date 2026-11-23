@@ -83,7 +83,7 @@ def convert(root: Path, batteries: list[str] | None) -> pd.DataFrame:
                              **feats, **charge_features(last_charge), **last_imp, "capacity_ah": cap})
                 last_charge = None
         print(f"{battery}: {n} descargas")
-    cols = ["battery_id", "cycle", "capacity_ah", "ambient_temperature", *[f for f in FEATURE_NAMES if f != "cycle"]]
+    cols = ["battery_id", "cycle", "capacity_ah", *[f for f in FEATURE_NAMES if f != "cycle"]]
     return pd.DataFrame(rows)[cols]
 
 

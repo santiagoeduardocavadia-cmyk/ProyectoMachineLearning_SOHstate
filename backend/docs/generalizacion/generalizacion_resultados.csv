@@ -1,0 +1,97 @@
+esquema,test,modelo,caracteristicas,augmentation,mae_soh,n_ciclos,n_celdas_test
+1. entrenado solo a 24 °C,4 °C,ridge,14 originales,no,0.27463,781,14
+1. entrenado solo a 24 °C,43 °C,ridge,14 originales,no,0.5192,263,7
+2. temperatura no vista,4 °C,ridge,14 originales,no,0.20795,781,14
+2. temperatura no vista,24 °C,ridge,14 originales,no,0.046361,1446,14
+2. temperatura no vista,43 °C,ridge,14 originales,no,0.055277,263,7
+3. celda nueva (multitemperatura),4 °C,ridge,14 originales,no,0.029224,781,14
+3. celda nueva (multitemperatura),24 °C,ridge,14 originales,no,0.044138,1446,14
+3. celda nueva (multitemperatura),43 °C,ridge,14 originales,no,0.032413,263,7
+1. entrenado solo a 24 °C,4 °C,ridge,14 originales,sí,0.27903,781,14
+1. entrenado solo a 24 °C,43 °C,ridge,14 originales,sí,0.52533,263,7
+2. temperatura no vista,4 °C,ridge,14 originales,sí,0.21215,781,14
+2. temperatura no vista,24 °C,ridge,14 originales,sí,0.057684,1446,14
+2. temperatura no vista,43 °C,ridge,14 originales,sí,0.049391,263,7
+3. celda nueva (multitemperatura),4 °C,ridge,14 originales,sí,0.029735,781,14
+3. celda nueva (multitemperatura),24 °C,ridge,14 originales,sí,0.046326,1446,14
+3. celda nueva (multitemperatura),43 °C,ridge,14 originales,sí,0.034466,263,7
+1. entrenado solo a 24 °C,4 °C,ridge,16 (+ temperatura y corriente),no,0.10081,781,14
+1. entrenado solo a 24 °C,43 °C,ridge,16 (+ temperatura y corriente),no,0.39696,263,7
+2. temperatura no vista,4 °C,ridge,16 (+ temperatura y corriente),no,0.24044,781,14
+2. temperatura no vista,24 °C,ridge,16 (+ temperatura y corriente),no,0.086801,1446,14
+2. temperatura no vista,43 °C,ridge,16 (+ temperatura y corriente),no,0.19517,263,7
+3. celda nueva (multitemperatura),4 °C,ridge,16 (+ temperatura y corriente),no,0.024743,781,14
+3. celda nueva (multitemperatura),24 °C,ridge,16 (+ temperatura y corriente),no,0.045184,1446,14
+3. celda nueva (multitemperatura),43 °C,ridge,16 (+ temperatura y corriente),no,0.031984,263,7
+1. entrenado solo a 24 °C,4 °C,ridge,16 (+ temperatura y corriente),sí,0.094857,781,14
+1. entrenado solo a 24 °C,43 °C,ridge,16 (+ temperatura y corriente),sí,0.42237,263,7
+2. temperatura no vista,4 °C,ridge,16 (+ temperatura y corriente),sí,0.24887,781,14
+2. temperatura no vista,24 °C,ridge,16 (+ temperatura y corriente),sí,0.10308,1446,14
+2. temperatura no vista,43 °C,ridge,16 (+ temperatura y corriente),sí,0.20529,263,7
+3. celda nueva (multitemperatura),4 °C,ridge,16 (+ temperatura y corriente),sí,0.024759,781,14
+3. celda nueva (multitemperatura),24 °C,ridge,16 (+ temperatura y corriente),sí,0.047925,1446,14
+3. celda nueva (multitemperatura),43 °C,ridge,16 (+ temperatura y corriente),sí,0.034228,263,7
+1. entrenado solo a 24 °C,4 °C,random_forest,14 originales,no,0.22396,781,14
+1. entrenado solo a 24 °C,43 °C,random_forest,14 originales,no,0.19187,263,7
+2. temperatura no vista,4 °C,random_forest,14 originales,no,0.20439,781,14
+2. temperatura no vista,24 °C,random_forest,14 originales,no,0.064391,1446,14
+2. temperatura no vista,43 °C,random_forest,14 originales,no,0.042117,263,7
+3. celda nueva (multitemperatura),4 °C,random_forest,14 originales,no,0.057765,781,14
+3. celda nueva (multitemperatura),24 °C,random_forest,14 originales,no,0.023727,1446,14
+3. celda nueva (multitemperatura),43 °C,random_forest,14 originales,no,0.015101,263,7
+1. entrenado solo a 24 °C,4 °C,random_forest,14 originales,sí,0.22968,781,14
+1. entrenado solo a 24 °C,43 °C,random_forest,14 originales,sí,0.21279,263,7
+2. temperatura no vista,4 °C,random_forest,14 originales,sí,0.22609,781,14
+2. temperatura no vista,24 °C,random_forest,14 originales,sí,0.085818,1446,14
+2. temperatura no vista,43 °C,random_forest,14 originales,sí,0.067664,263,7
+3. celda nueva (multitemperatura),4 °C,random_forest,14 originales,sí,0.057191,781,14
+3. celda nueva (multitemperatura),24 °C,random_forest,14 originales,sí,0.029272,1446,14
+3. celda nueva (multitemperatura),43 °C,random_forest,14 originales,sí,0.01924,263,7
+1. entrenado solo a 24 °C,4 °C,random_forest,16 (+ temperatura y corriente),no,0.22072,781,14
+1. entrenado solo a 24 °C,43 °C,random_forest,16 (+ temperatura y corriente),no,0.18774,263,7
+2. temperatura no vista,4 °C,random_forest,16 (+ temperatura y corriente),no,0.18561,781,14
+2. temperatura no vista,24 °C,random_forest,16 (+ temperatura y corriente),no,0.0533,1446,14
+2. temperatura no vista,43 °C,random_forest,16 (+ temperatura y corriente),no,0.041688,263,7
+3. celda nueva (multitemperatura),4 °C,random_forest,16 (+ temperatura y corriente),no,0.051531,781,14
+3. celda nueva (multitemperatura),24 °C,random_forest,16 (+ temperatura y corriente),no,0.023506,1446,14
+3. celda nueva (multitemperatura),43 °C,random_forest,16 (+ temperatura y corriente),no,0.014232,263,7
+1. entrenado solo a 24 °C,4 °C,random_forest,16 (+ temperatura y corriente),sí,0.2295,781,14
+1. entrenado solo a 24 °C,43 °C,random_forest,16 (+ temperatura y corriente),sí,0.21227,263,7
+2. temperatura no vista,4 °C,random_forest,16 (+ temperatura y corriente),sí,0.22588,781,14
+2. temperatura no vista,24 °C,random_forest,16 (+ temperatura y corriente),sí,0.084615,1446,14
+2. temperatura no vista,43 °C,random_forest,16 (+ temperatura y corriente),sí,0.048765,263,7
+3. celda nueva (multitemperatura),4 °C,random_forest,16 (+ temperatura y corriente),sí,0.057989,781,14
+3. celda nueva (multitemperatura),24 °C,random_forest,16 (+ temperatura y corriente),sí,0.028488,1446,14
+3. celda nueva (multitemperatura),43 °C,random_forest,16 (+ temperatura y corriente),sí,0.018485,263,7
+1. entrenado solo a 24 °C,4 °C,gradient_boosting,14 originales,no,0.22673,781,14
+1. entrenado solo a 24 °C,43 °C,gradient_boosting,14 originales,no,0.18818,263,7
+2. temperatura no vista,4 °C,gradient_boosting,14 originales,no,0.21951,781,14
+2. temperatura no vista,24 °C,gradient_boosting,14 originales,no,0.069721,1446,14
+2. temperatura no vista,43 °C,gradient_boosting,14 originales,no,0.042283,263,7
+3. celda nueva (multitemperatura),4 °C,gradient_boosting,14 originales,no,0.043513,781,14
+3. celda nueva (multitemperatura),24 °C,gradient_boosting,14 originales,no,0.035155,1446,14
+3. celda nueva (multitemperatura),43 °C,gradient_boosting,14 originales,no,0.019929,263,7
+1. entrenado solo a 24 °C,4 °C,gradient_boosting,14 originales,sí,0.22789,781,14
+1. entrenado solo a 24 °C,43 °C,gradient_boosting,14 originales,sí,0.18753,263,7
+2. temperatura no vista,4 °C,gradient_boosting,14 originales,sí,0.21424,781,14
+2. temperatura no vista,24 °C,gradient_boosting,14 originales,sí,0.082182,1446,14
+2. temperatura no vista,43 °C,gradient_boosting,14 originales,sí,0.036148,263,7
+3. celda nueva (multitemperatura),4 °C,gradient_boosting,14 originales,sí,0.048148,781,14
+3. celda nueva (multitemperatura),24 °C,gradient_boosting,14 originales,sí,0.039763,1446,14
+3. celda nueva (multitemperatura),43 °C,gradient_boosting,14 originales,sí,0.023511,263,7
+1. entrenado solo a 24 °C,4 °C,gradient_boosting,16 (+ temperatura y corriente),no,0.22611,781,14
+1. entrenado solo a 24 °C,43 °C,gradient_boosting,16 (+ temperatura y corriente),no,0.17862,263,7
+2. temperatura no vista,4 °C,gradient_boosting,16 (+ temperatura y corriente),no,0.20705,781,14
+2. temperatura no vista,24 °C,gradient_boosting,16 (+ temperatura y corriente),no,0.058668,1446,14
+2. temperatura no vista,43 °C,gradient_boosting,16 (+ temperatura y corriente),no,0.046224,263,7
+3. celda nueva (multitemperatura),4 °C,gradient_boosting,16 (+ temperatura y corriente),no,0.036759,781,14
+3. celda nueva (multitemperatura),24 °C,gradient_boosting,16 (+ temperatura y corriente),no,0.028452,1446,14
+3. celda nueva (multitemperatura),43 °C,gradient_boosting,16 (+ temperatura y corriente),no,0.020025,263,7
+1. entrenado solo a 24 °C,4 °C,gradient_boosting,16 (+ temperatura y corriente),sí,0.22835,781,14
+1. entrenado solo a 24 °C,43 °C,gradient_boosting,16 (+ temperatura y corriente),sí,0.17878,263,7
+2. temperatura no vista,4 °C,gradient_boosting,16 (+ temperatura y corriente),sí,0.2197,781,14
+2. temperatura no vista,24 °C,gradient_boosting,16 (+ temperatura y corriente),sí,0.11797,1446,14
+2. temperatura no vista,43 °C,gradient_boosting,16 (+ temperatura y corriente),sí,0.03362,263,7
+3. celda nueva (multitemperatura),4 °C,gradient_boosting,16 (+ temperatura y corriente),sí,0.045541,781,14
+3. celda nueva (multitemperatura),24 °C,gradient_boosting,16 (+ temperatura y corriente),sí,0.03969,1446,14
+3. celda nueva (multitemperatura),43 °C,gradient_boosting,16 (+ temperatura y corriente),sí,0.021372,263,7

@@ -1,7 +1,10 @@
 """Acceso a los datasets (CSV de ciclos) con caché en memoria.
 
 Hay dos tipos de dataset:
-- ``nasa`` (por defecto): el CSV procesado del NASA Battery Dataset, versionado en el repo.
+- Incluidos (versionados en el repo, no se pueden borrar):
+  - ``nasa`` (por defecto): B0005, B0006, B0007 y B0018 a 24 °C.
+  - ``nasa_multitemp`` (v1.2.0): las 32 celdas del ZIP oficial a 4, 22-24 y 43-44 °C, con corrientes
+    de 1, 2 y 4 A. Las celdas ensayadas a dos temperaturas se parten en tramos (``B0042_04C``, ``B0042_22C``).
 - Subidos por el usuario (``POST /api/v1/datasets``): se guardan en ``data/uploads/<id>.csv``
   junto con ``<id>.json`` (nombre, capacidad nominal, umbral de EOL, fecha, advertencias).
 
@@ -32,7 +35,7 @@ from app.data.preprocessing import add_targets, clean
 from app.errors import AppError
 
 DEFAULT_DATASET_ID = "nasa"
-REQUIRED_COLUMNS = ["battery_id", "cycle", "capacity_ah", "soh", "rul", *FEATURE_NAMES]
+REQUIRED_COLUMNS = ["battery_id", "cycle", "capacity_ah", "soh", "rul"]
 UPLOAD_REQUIRED = ["battery_id", "cycle", "capacity_ah"]
 TARGET_COLUMNS = {"soh", "rul", "eol_cycle"}
 MAX_UPLOAD_ROWS = 200_000
@@ -51,12 +54,22 @@ def _paths(dataset_id: str) -> tuple[Path, Path]:
     return d / f"{dataset_id}.csv", d / f"{dataset_id}.json"
 
 
-def _nasa_meta() -> dict[str, Any]:
+MULTITEMP_DATASET_ID = "nasa_multitemp"
+BUILTIN_DATASETS: dict[str, dict[str, Any]] = {
+    DEFAULT_DATASET_ID: {"name": "NASA PCoE Battery Data Set (B0005, B0006, B0007, B0018)", "is_default": True,
+                         "file": lambda: config.PROCESSED_FILE},
+    MULTITEMP_DATASET_ID: {"name": "NASA PCoE completo: 32 celdas a 4, 24 y 43 °C (1, 2 y 4 A)", "is_default": False,
+                           "file": lambda: config.MULTITEMP_FILE},
+}
+
+
+def _builtin_meta(dataset_id: str) -> dict[str, Any]:
+    b = BUILTIN_DATASETS[dataset_id]
     return {
-        "id": DEFAULT_DATASET_ID,
-        "name": "NASA PCoE Battery Data Set (B0005, B0006, B0007, B0018)",
+        "id": dataset_id,
+        "name": b["name"],
         "source": "nasa",
-        "is_default": True,
+        "is_default": b["is_default"],
         "created_at": None,
         "nominal_capacity_ah": config.NOMINAL_CAPACITY_AH,
         "eol_capacity_ah": config.EOL_CAPACITY_AH,
@@ -66,8 +79,8 @@ def _nasa_meta() -> dict[str, Any]:
 
 def dataset_meta(dataset_id: str | None = None) -> dict[str, Any]:
     dataset_id = dataset_id or DEFAULT_DATASET_ID
-    if dataset_id == DEFAULT_DATASET_ID:
-        return _nasa_meta()
+    if dataset_id in BUILTIN_DATASETS:
+        return _builtin_meta(dataset_id)
     csv_path, meta_path = _paths(dataset_id)
     if not meta_path.exists() or not csv_path.exists():
         raise AppError("dataset_not_found", f"El dataset '{dataset_id}' no existe.", 404)
@@ -76,12 +89,12 @@ def dataset_meta(dataset_id: str | None = None) -> dict[str, Any]:
 
 def dataset_path(dataset_id: str | None = None) -> Path:
     dataset_id = dataset_id or DEFAULT_DATASET_ID
-    if dataset_id == DEFAULT_DATASET_ID:
-        path = Path(config.PROCESSED_FILE)
+    if dataset_id in BUILTIN_DATASETS:
+        path = Path(BUILTIN_DATASETS[dataset_id]["file"]())
         if not path.exists():
             raise AppError(
                 "dataset_not_found",
-                "No existe el dataset procesado. Ejecuta 'python -m scripts.prepare_dataset' en backend/.",
+                "No existe el dataset procesado. Ejecuta 'python -m scripts.prepare_dataset --multitemp' en backend/.",
                 503, {"path": str(path)},
             )
         return path
@@ -96,6 +109,10 @@ def _load(path_str: str, mtime: float) -> pd.DataFrame:  # mtime invalida la cac
     missing = [c for c in REQUIRED_COLUMNS if c not in df.columns]
     if missing:
         raise AppError("dataset_invalid", f"El CSV del dataset no tiene las columnas: {missing}", 500)
+    # Datasets guardados con una versión anterior (sin las características nuevas): quedan vacías.
+    for f in FEATURE_NAMES:
+        if f not in df.columns:
+            df[f] = np.nan
     return df.sort_values(["battery_id", "cycle"]).reset_index(drop=True)
 
 
@@ -134,17 +151,22 @@ def describe(dataset_id: str | None = None) -> dict[str, Any]:
     batteries = []
     for b, g in df.groupby("battery_id"):
         eol = g["eol_cycle"].iloc[0] if "eol_cycle" in g else np.nan
-        batteries.append({"battery_id": b, "n_cycles": int(len(g)), "reaches_eol": not pd.isna(eol)})
+        temp = g["ambient_temperature"].median()
+        batteries.append({"battery_id": b, "n_cycles": int(len(g)), "reaches_eol": not pd.isna(eol),
+                          "ambient_temperature": None if pd.isna(temp) else float(temp)})
+    temps = sorted({round(t["ambient_temperature"]) for t in batteries if t["ambient_temperature"] is not None})
     return {**meta, "n_rows": int(len(df)), "n_batteries": len(batteries), "batteries": batteries,
+            "temperatures": temps,
             "sha256_16": dataset_fingerprint(meta["id"])}
 
 
 def list_datasets() -> list[dict[str, Any]]:
     out = []
-    try:
-        out.append(describe(DEFAULT_DATASET_ID))
-    except AppError:
-        pass
+    for builtin in BUILTIN_DATASETS:
+        try:
+            out.append(describe(builtin))
+        except AppError:
+            pass
     d = _uploads_dir()
     if d.exists():
         metas = []
@@ -189,8 +211,7 @@ def parse_upload(raw: bytes, nominal_capacity: float, eol_capacity: float) -> tu
     dropped_targets = sorted(TARGET_COLUMNS & set(df.columns))
     if dropped_targets:
         warnings.append(f"Las columnas {dropped_targets} se recalcularon en el backend a partir de capacity_ah.")
-    extra = sorted(set(df.columns) - set(UPLOAD_REQUIRED) - set(FEATURE_NAMES) - TARGET_COLUMNS
-                   - {"ambient_temperature"})
+    extra = sorted(set(df.columns) - set(UPLOAD_REQUIRED) - set(FEATURE_NAMES) - TARGET_COLUMNS)
     if extra:
         warnings.append(f"Columnas ignoradas (no son características conocidas): {extra}.")
 
@@ -206,7 +227,7 @@ def parse_upload(raw: bytes, nominal_capacity: float, eol_capacity: float) -> tu
     if (df["battery_id"].isin(["", "nan", "None"])).any():
         raise AppError("invalid_dataset", "Hay filas sin battery_id.", 422)
 
-    numeric_cols = ["cycle", "capacity_ah", *present] + (["ambient_temperature"] if "ambient_temperature" in df else [])
+    numeric_cols = ["cycle", "capacity_ah", *present]
     bad = {}
     for c in numeric_cols:
         conv = pd.to_numeric(df[c], errors="coerce")
@@ -238,10 +259,8 @@ def parse_upload(raw: bytes, nominal_capacity: float, eol_capacity: float) -> tu
 
     for f in absent:
         df[f] = np.nan
-    if "ambient_temperature" not in df:
-        df["ambient_temperature"] = np.nan
     df = df.drop(columns=[c for c in df.columns if c in TARGET_COLUMNS], errors="ignore")
-    keep = ["battery_id", "cycle", "ambient_temperature", *[f for f in FEATURE_NAMES if f != "cycle"], "capacity_ah"]
+    keep = ["battery_id", "cycle", *[f for f in FEATURE_NAMES if f != "cycle"], "capacity_ah"]
     df = add_targets(df[keep], eol_capacity=eol_capacity, nominal_capacity=nominal_capacity)
 
     n_batt = df["battery_id"].nunique()
@@ -276,8 +295,8 @@ def save_upload(raw: bytes, name: str, nominal_capacity: float | None, eol_capac
 
 
 def delete_dataset(dataset_id: str) -> None:
-    if dataset_id == DEFAULT_DATASET_ID:
-        raise AppError("dataset_protected", "El dataset NASA por defecto no se puede borrar.", 403)
+    if dataset_id in BUILTIN_DATASETS:
+        raise AppError("dataset_protected", "Los datasets NASA incluidos no se pueden borrar.", 403)
     dataset_meta(dataset_id)
     for p in _paths(dataset_id):
         p.unlink(missing_ok=True)

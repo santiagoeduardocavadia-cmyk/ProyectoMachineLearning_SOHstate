@@ -32,6 +32,9 @@ class FeatureInfo:
 
 FEATURES: list[FeatureInfo] = [
     FeatureInfo("cycle", "ciclos", "Número de ciclo de descarga (1 = primera descarga de la batería).", "meta"),
+    FeatureInfo("ambient_temperature", "°C", "Temperatura ambiente del ensayo (condición de operación).", "meta"),
+    FeatureInfo("discharge_current_a", "A", "Corriente media de descarga, en valor absoluto, durante la descarga efectiva "
+                "(condición de operación: 1, 2 o 4 A en el dataset NASA).", "discharge"),
     FeatureInfo("v_mean", "V", "Voltaje medio durante la descarga efectiva (hasta el voltaje mínimo).", "discharge"),
     FeatureInfo("v_std", "V", "Desviación estándar del voltaje durante la descarga efectiva.", "discharge"),
     FeatureInfo("time_to_3_8v", "s", "Tiempo desde el inicio de la descarga hasta que el voltaje cae a 3.8 V.", "discharge"),
@@ -48,6 +51,11 @@ FEATURES: list[FeatureInfo] = [
 ]
 
 FEATURE_NAMES: list[str] = [f.name for f in FEATURES]
+# Condiciones de operación (v1.2.0). Sin ellas el modelo no puede distinguir "celda degradada"
+# de "celda sana a otra temperatura o corriente", que es por lo que fallaba con datos de otras condiciones.
+CONDITION_FEATURES: list[str] = ["ambient_temperature", "discharge_current_a"]
+# Las 14 características originales (v1.0-v1.1); los experimentos de referencia NASA las conservan.
+LEGACY_FEATURES: list[str] = [f for f in FEATURE_NAMES if f not in CONDITION_FEATURES]
 DEFAULT_FEATURES: list[str] = list(FEATURE_NAMES)
 
 TARGETS = {
@@ -78,6 +86,7 @@ def discharge_features(data: dict) -> dict:
     temp = np.asarray(data["Temperature_measured"], dtype=float)
     if t.size < 5:
         raise ValueError("ciclo de descarga con muy pocas muestras")
+    current = data.get("Current_measured")
     # Descarga efectiva: hasta el voltaje mínimo. Después la carga se desconecta
     # y el voltaje "rebota", lo cual no aporta información de degradación.
     end = int(np.argmin(v)) + 1
@@ -93,6 +102,8 @@ def discharge_features(data: dict) -> dict:
         "temp_max": float(temp[i_tmax]),
         "time_to_temp_max": float(t_rel[i_tmax]),
         "temp_rise": float(temp[i_tmax] - temp[0]),
+        "discharge_current_a": (float(np.mean(np.abs(np.asarray(current, dtype=float)[:end])))
+                                if current is not None and np.size(current) == t.size else float("nan")),
     }
 
 

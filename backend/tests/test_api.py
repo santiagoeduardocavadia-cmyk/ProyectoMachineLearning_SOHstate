@@ -34,7 +34,7 @@ def test_experimento_punta_a_punta(client, fast_experiment):
     assert client.get(f"/api/v1/experiments/{eid}").json()["id"] == eid
     p = client.get(f"/api/v1/experiments/{eid}/predictions?split=test").json()
     assert len(p["points"]) == 168 and {"y_true", "y_pred", "error"} <= set(p["points"][0])
-    assert len(client.get(f"/api/v1/experiments/{eid}/feature-importance").json()["importances"]) == 14
+    assert len(client.get(f"/api/v1/experiments/{eid}/feature-importance").json()["importances"]) == len(exp["config"]["features"])
     assert client.get(f"/api/v1/experiments/{eid}/model").status_code == 200
 
     pr = client.post(f"/api/v1/experiments/{eid}/predict", json={"battery_id": "B0006", "cycles": [1, 50]}).json()
