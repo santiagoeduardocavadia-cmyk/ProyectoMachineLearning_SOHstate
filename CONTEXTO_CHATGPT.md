@@ -2,7 +2,7 @@
 
 > **Para ChatGPT:** este documento es tu contexto completo. Tú construyes **solo el frontend** (carpeta `frontend/`).
 > El backend ya existe, lo mantiene Claude y se consume **únicamente** por HTTP con el contrato de abajo.
-> Versión del contrato: **API v1.1.1** (prefijo `/api/v1`). Novedades de v1.1.0 en la sección 4.3. Repositorio:
+> Versión del contrato: **API v1.2.0** (prefijo `/api/v1`). Novedades de v1.1.0 en la sección 4.3 y de v1.2.0 en la 4.4. Repositorio:
 > https://github.com/santiagoeduardocavadia-cmyk/ProyectoMachineLearning_SOHstate
 
 ---
@@ -15,7 +15,7 @@ mediciones de sus ciclos de carga/descarga.
 
 **Datos:** NASA Prognostics Center of Excellence, *Battery Data Set*. Cuatro celdas 18650 (B0005, B0006, B0007, B0018)
 cicladas a 24 °C hasta perder ~30 % de capacidad (de 2.0 Ah nominal a 1.4 Ah = fin de vida, EOL).
-El backend convierte las señales crudas en **636 filas = 1 fila por ciclo de descarga** con 14 características.
+El backend convierte las señales crudas en **636 filas = 1 fila por ciclo de descarga** con 14 características (16 desde v1.2.0, ver 4.4).
 
 | Concepto | Significado | Unidad |
 |---|---|---|
@@ -85,7 +85,7 @@ Convenciones:
 | 403 | `dataset_protected` (v1.1) |
 | 404 | `not_found`, `battery_not_found`, `experiment_not_found`, `cycle_not_found`, `dataset_not_found` |
 | 413 / 415 | `file_too_large`, `invalid_file` |
-| 422 | `validation_error`, `unknown_model`, `invalid_hyperparameters`, `invalid_features`, `invalid_split`, `invalid_samples`, `invalid_file`, `invalid_dataset` (v1.1) |
+| 422 | `validation_error`, `unknown_model`, `invalid_hyperparameters`, `invalid_features`, `invalid_split`, `invalid_samples`, `invalid_file`, `invalid_dataset` (v1.1), `no_compatible_experiment` (v1.2) |
 | 500 / 503 | `internal_error`, `dataset_not_found`, `dataset_invalid` |
 
 ### 4.1 Resumen de endpoints
@@ -112,6 +112,7 @@ Convenciones:
 | GET | `/datasets/template` | **(v1.1)** Descargar plantilla CSV |
 | GET | `/datasets/{dataset_id}` | **(v1.1)** Detalle de un dataset |
 | DELETE | `/datasets/{dataset_id}` | **(v1.1)** Borrar un dataset subido (204) |
+| POST | `/predict/auto` | **(v1.2)** Inferencia por CSV **sin elegir experimento**: el backend escoge el modelo adecuado |
 
 Todas las rutas llevan el prefijo `/api/v1`. Desde v1.1.0, todos los `GET /dataset/...` aceptan `?dataset_id=` (por defecto `nasa`).
 
@@ -151,8 +152,8 @@ Todas las rutas llevan el prefijo `/api/v1`. Desde v1.1.0, todos los `GET /datas
   ]
 }
 ```
-`source` ∈ `meta | discharge | charge | impedance`. Las 14 características (en este orden):
-`cycle, v_mean, v_std, time_to_3_8v, time_to_3_5v, v_at_500s, temp_max, time_to_temp_max, temp_rise, cc_charge_time, cv_charge_time, charge_temp_max, re_ohm, rct_ohm`.
+`source` ∈ `meta | discharge | charge | impedance`. Las características (en este orden; desde v1.2.0 son 16, con `ambient_temperature` y `discharge_current_a` en las posiciones 2 y 3):
+`cycle, ambient_temperature, discharge_current_a, v_mean, v_std, time_to_3_8v, time_to_3_5v, v_at_500s, temp_max, time_to_temp_max, temp_rise, cc_charge_time, cv_charge_time, charge_temp_max, re_ohm, rct_ohm`.
 
 #### GET `/api/v1/dataset/batteries/{battery_id}/degradation`
 ```json
@@ -168,7 +169,7 @@ Gráfico sugerido: línea capacidad vs ciclo por batería + línea horizontal en
 #### GET `/api/v1/dataset/cycles?battery_id=B0018&limit=50&offset=0`
 ```json
 { "total": 132, "offset": 0, "limit": 50,
-  "rows": [ { "battery_id": "B0018", "cycle": 1, "ambient_temperature": 24.0, "v_mean": 3.53978, "...": "resto de las 14 características",
+  "rows": [ { "battery_id": "B0018", "cycle": 1, "ambient_temperature": 24.0, "v_mean": 3.53978, "...": "resto de las características",
               "capacity_ah": 1.855, "soh": 0.927502, "rul": 96.0, "eol_cycle": 97.0 } ] }
 ```
 `battery_id` es opcional; `limit` 1–5000 (por defecto 1000).
@@ -317,7 +318,7 @@ Todo es **compatible** con v1.0.0: si no envías `dataset_id`, todo funciona igu
 
 **Formato del CSV** (una fila por ciclo de descarga, máx. 20 MB):
 - Obligatorias: `battery_id` (texto), `cycle` (entero ≥ 1), `capacity_ah` (Ah medidos en ese ciclo).
-- Opcionales: cualquiera de las 14 características (`v_mean`, `time_to_3_5v`, ...). Las que falten quedan vacías y no se
+- Opcionales: cualquiera de las características (`v_mean`, `ambient_temperature`, `discharge_current_a`, `time_to_3_5v`, ...). Las que falten quedan vacías y no se
   pueden usar para entrenar. Debe haber al menos una además de `cycle`.
 - `soh`, `rul` y `eol_cycle` **siempre se recalculan** en el backend (si vienen, se ignoran con una advertencia).
 - Mínimo 10 ciclos válidos y 2 baterías. No puede haber `(battery_id, cycle)` repetidos.
@@ -371,6 +372,77 @@ La respuesta de `POST /experiments/{id}/predict` y `/predict/csv` trae el campo 
   Para `soh`, si falta la columna `soh` pero viene `capacity_ah`, el SOH real se calcula como `capacity_ah / nominal` (v1.1.1).
   Si no la trae, `metrics` es `null` y aparece una advertencia en `warnings`.
 
+### 4.4 Novedades v1.2.0: predecir baterías fuera del rango de entrenamiento
+El profesor observó que el modelo "alucina" con CSV de otras condiciones (p. ej. 43 °C o 4 °C).
+Todos los cambios son **compatibles**: lo que ya funciona sigue igual y solo aparecen campos nuevos.
+
+**1. Dataset incluido `nasa_multitemp`.** Aparece en `GET /datasets` junto a `nasa` (no se puede borrar).
+Son las 32 celdas del ZIP oficial NASA a 4, 22-24 y 43-44 °C y descargas de 1, 2 y 4 A (2490 ciclos).
+Las celdas ensayadas a dos temperaturas vienen partidas en tramos: `B0042_04C` y `B0042_22C`.
+Cada dataset de `GET /datasets` trae el campo nuevo `temperatures` (p. ej. `[4, 22, 24, 43, 44]`) y cada batería
+`ambient_temperature`. `GET /dataset/summary` añade `discharge_current_a` por batería.
+
+**2. Dos características nuevas** en `GET /dataset/features` (16 en total): `ambient_temperature` (°C) y
+`discharge_current_a` (A). Son las condiciones de operación: sin ellas el modelo no distingue "celda degradada"
+de "celda sana a otra temperatura". Con `features: null` se usan si el dataset tiene datos.
+
+**3. `POST /experiments` acepta `test_temperatures`** (opcional, lista de °C). Si se envía, el test son **todas** las
+baterías a esas temperaturas (±3 °C) y se ignora `test_batteries`. Sirve para mostrar "temperatura nunca vista":
+```json
+{ "name": "GB sin ver 43 °C", "dataset_id": "nasa_multitemp", "target": "soh",
+  "model_type": "gradient_boosting", "test_temperatures": [43] }
+```
+La respuesta del experimento añade:
+- `config.test_temperatures` (o `null`).
+- `metrics.per_temperature`: `{ "4": {mae, rmse, r2, mape_pct, n}, "43": {...} }`, el error de test por temperatura.
+- `metrics.cv.strategy` ahora agrupa por **celda física** (máximo 10 pliegues). Las copias aumentadas
+  `B0005~ruido1` y los tramos `B0042_04C`/`B0042_22C` cuentan como la misma celda.
+- `domain`: el resumen del dominio de entrenamiento (temperaturas y corrientes vistas, rangos). Úsalo para mostrar
+  "entrenado a 4, 22 y 24 °C".
+
+**4. Dominio de validez en toda inferencia** (`/predict`, `/predict/csv` y `/predict/auto`):
+- Campo nuevo `domain` en la respuesta:
+```json
+"domain": {
+  "status": "fuera",                       // "dentro" | "borde" | "fuera"
+  "fraction": {"dentro": 0.0, "borde": 0.0, "fuera": 1.0},
+  "distance_ratio_median": 3.46,           // 1 = tan típico como el 95 % del entrenamiento
+  "features_out_of_range": [{"feature": "v_mean", "n_rows": 40, "train_range": [3.46, 3.58]}],
+  "train_temperatures": [24.0], "unseen_temperatures": [43.0],
+  "train_currents": [2.0], "unseen_currents": [4.0],
+  "message": "Los datos están fuera de las condiciones de entrenamiento: la predicción NO es fiable. ..."
+}
+```
+- Cada elemento de `predictions` añade `domain_status` (`dentro`/`borde`/`fuera`), `domain_distance` (número o `null`)
+  y `out_of_range_features` (lista).
+- **Sugerencia de UI:** un aviso de color con `domain.message` (verde dentro, ámbar borde, rojo fuera) encima de la
+  tabla de predicciones, y una columna "Fiabilidad" con `domain_status`. No ocultes la predicción, solo avisa.
+
+**5. `POST /api/v1/predict/auto`** (multipart): `file` (CSV, mismo formato que `/predict/csv`) y `target`
+(`soh` por defecto, `rul` o `capacity`). El backend compara el CSV con el dominio de **todos** los experimentos guardados
+de ese objetivo, elige el más cercano (desempata por menor MAE de test) y predice con él. **Nunca usa el valor real
+del CSV para elegir.** La respuesta es la misma de `/predict/csv` más:
+```json
+"selection": {
+  "selected_experiment_id": "referencia_multitemp_soh_random_forest",
+  "criterion": "menor distancia al dominio de entrenamiento (sin usar el valor real); desempate por MAE de test",
+  "reason": "'Multitemperatura SOH - Random Forest ...' es el experimento cuyo entrenamiento más se parece ...",
+  "candidates": [
+    {"experiment_id": "...", "name": "...", "model_type": "random_forest", "dataset_id": "nasa_multitemp",
+     "test_mae": 0.0196, "eligible": true, "score": 1.01, "distance_ratio_median": 1.01,
+     "domain_status": "borde", "unseen_temperatures": [], "unseen_currents": []},
+    {"experiment_id": "...", "eligible": false, "reason": "al CSV le faltan columnas: ['discharge_current_a']"}
+  ]
+}
+```
+Si ningún experimento sirve: 422 `no_compatible_experiment` con `details.candidates`.
+**Sugerencia de UI:** en Inferencia, una opción "Selección automática" que suba el CSV aquí, muestre el modelo
+elegido con `reason` y una tabla de `candidates` (nombre, dataset, estado de dominio, distancia, MAE de test).
+
+**6. Experimentos de referencia nuevos** (además de los 3 de NASA, que no cambian):
+`referencia_multitemp_soh_gradient_boosting`, `referencia_multitemp_soh_random_forest`, `referencia_multitemp_soh_ridge`
+(test: B0006 a 24 °C, B0031 a 43 °C y B0047 a 4 °C) y `referencia_multitemp_soh_sin_43C` (test: todas las celdas a 43 °C).
+
 ## 5. Qué debe tener el frontend (requisitos del curso)
 
 1. **Datos:** resumen del dataset, tabla de baterías y curva de degradación (capacidad vs ciclo con la línea de EOL).
@@ -383,6 +455,9 @@ La respuesta de `POST /experiments/{id}/predict` y `/predict/csv` trae el campo 
 8. Una sección corta "Metodología" que explique las 5 decisiones técnicas de la sección 1.
 9. **(v1.1) Cargar datos:** formulario para subir un CSV propio (con enlace a la plantilla), lista de datasets con
    advertencias, selector de dataset en Datos y en Entrenamiento, y métricas en la predicción por CSV.
+10. **(v1.2) Fiabilidad fuera de rango:** aviso de `domain` en toda inferencia, columna `domain_status`,
+    opción "Selección automática" (`/predict/auto`), campo `test_temperatures` en el formulario de entrenamiento
+    y tabla `metrics.per_temperature` en el detalle del experimento.
 
 ## 6. Reglas de colaboración (para no cruzarnos)
 
@@ -432,3 +507,4 @@ Commits pequeños y frecuentes, en español, y que el proyecto corra después de
 | 1.0.0 | 2026-11-20 | Versión inicial |
 | 1.1.0 | 2026-11-20 | Subida de datasets propios (`/datasets`), `dataset_id` en experimentos y en `/dataset/*`, `metrics` en inferencia |
 | 1.1.1 | 2026-11-20 | `/predict/csv` deriva el SOH real de `capacity_ah` si falta la columna `soh` |
+| 1.2.0 | 2026-11-23 | Dataset `nasa_multitemp`, características `ambient_temperature` y `discharge_current_a`, `test_temperatures`, `metrics.per_temperature`, CV por celda física, `domain` en inferencia y `POST /predict/auto` |

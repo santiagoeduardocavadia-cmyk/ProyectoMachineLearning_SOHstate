@@ -61,14 +61,20 @@ de test de ese dataset. SOH y RUL se recalculan en el backend; los datasets subi
 
 **Usar el dataset de Kaggle** ([patrickfleith/nasa-battery-dataset](https://www.kaggle.com/datasets/patrickfleith/nasa-battery-dataset)):
 descarga y descomprime `cleaned_dataset/` y conviértelo al formato de subida con
-`python -m scripts.convert_kaggle RUTA/cleaned_dataset --batteries B0029 B0030 B0031 B0032 --out mis_baterias.csv`.
+`python -m scripts.convert_kaggle RUTA/cleaned_dataset --batteries B0029 B0030 B0031 B0032 --out mis_baterias.csv`
+(añade `--clean` para B0038–B0044, que traen tramos a varias temperaturas y descargas cortadas).
+
+**Datos aumentados (data augmentation):** `python -m scripts.augment_dataset MI.csv --test B0006` genera un CSV con
+baterías virtuales que se sube como cualquier dataset; entrena con la misma batería de test. Los CSV limpios y
+aumentados de NASA y Kaggle están en `datos_aumentados/`. Detalles y mediciones:
+[PREPROCESAMIENTO.md §9](backend/docs/PREPROCESAMIENTO.md) y [docs/PLAN_MEDICIONES.md](docs/PLAN_MEDICIONES.md).
 
 Cada experimento queda guardado en `backend/experiments/<id>/`:
 `experiment.json` (configuración, métricas, importancias, versiones de librerías, huella del dataset),
 `predictions.csv` y `model.joblib`.
 
-Ya vienen tres experimentos de referencia (`referencia_soh_random_forest`, `referencia_soh_ridge`,
-`referencia_rul_gradient_boosting`). Si tu versión de scikit-learn es distinta y el modelo guardado da
+Ya vienen siete experimentos de referencia: `referencia_soh_random_forest`, `referencia_soh_ridge` y
+`referencia_rul_gradient_boosting` (NASA a 24 °C), más cuatro `referencia_multitemp_*` (v1.2.0). Si tu versión de scikit-learn es distinta y el modelo guardado da
 advertencias al cargarse, regenéralos con `python -m scripts.run_reference_experiment`.
 
 ## Resultados de referencia (test = batería B0006, nunca vista en entrenamiento)
@@ -78,6 +84,26 @@ advertencias al cargarse, regenéralos con `python -m scripts.run_reference_expe
 | SOH – Random Forest | 0.030 | 0.037 | 0.914 | 0.113 |
 | SOH – Ridge | 0.020 | 0.020 | 0.975 | 0.113 |
 | RUL – Gradient Boosting | 11.4 ciclos | 13.0 | 0.830 | 27.3 |
+
+## Baterías fuera del rango de entrenamiento (v1.2.0)
+
+El modelo original solo vio 4 celdas a 24 °C y fallaba con otras condiciones: Ridge daba un MAE de 0.42 en B0031 a 43 °C.
+Desde v1.2.0:
+- Hay un dataset **`nasa_multitemp`** con 32 celdas a 4, 24 y 43 °C y corrientes de 1, 2 y 4 A.
+- La temperatura y la corriente son características del modelo.
+- Cada predicción dice si los datos están **dentro, en el borde o fuera** de lo que el modelo conoce.
+- `POST /api/v1/predict/auto` elige solo el experimento adecuado para un CSV.
+
+| Experimento (multitemperatura) | MAE test | R² | Test |
+|---|---|---|---|
+| SOH – Random Forest | 0.020 | 0.961 | B0006 (24 °C), B0031 (43 °C), B0047 (4 °C) |
+| SOH – Ridge | 0.021 | 0.929 | ídem |
+| SOH – Gradient Boosting | 0.028 | 0.925 | ídem |
+| SOH – Gradient Boosting, 43 °C nunca vista | 0.046 | — | las 7 celdas a 43-44 °C |
+
+Comparativa completa, con y sin data augmentation: [backend/docs/GENERALIZACION.md](backend/docs/GENERALIZACION.md).
+Para regenerar: `python -m scripts.prepare_dataset --multitemp`, `python -m scripts.run_reference_experiment` y
+`python -m scripts.evaluate_generalization`.
 
 ## Tests
 
@@ -97,7 +123,7 @@ backend/
     errors.py            formato único de errores
     schemas.py           validación de entradas (Pydantic)
     api/routes.py        endpoints /api/v1
-    data/features.py     14 características por ciclo
+    data/features.py     16 características por ciclo (14 + temperatura y corriente)
     data/preprocessing.py descarga, lectura .mat, objetivos SOH/RUL, limpieza
     data/dataset.py      carga del CSV procesado
     ml/models.py         catálogo de modelos y validación de hiperparámetros

@@ -2,7 +2,7 @@
   "id": "referencia_soh_ridge",
   "name": "Referencia SOH - Ridge (test B0006)",
   "description": "Comparación lineal: extrapola mejor que los árboles por debajo del SOH mínimo visto en entrenamiento.",
-  "created_at": "2026-11-20T18:12:28+00:00",
+  "created_at": "2026-11-23T06:10:51+00:00",
   "status": "completed",
   "config": {
     "target": "soh",
@@ -34,7 +34,9 @@
     "test_batteries": [
       "B0006"
     ],
-    "random_state": 42
+    "random_state": 42,
+    "test_temperatures": null,
+    "dataset_id": "nasa"
   },
   "metrics": {
     "train": {
@@ -68,7 +70,7 @@
       }
     },
     "cv": {
-      "strategy": "leave-one-battery-out (3 pliegues)",
+      "strategy": "leave-one-cell-out (3 pliegues)",
       "mae_mean": 0.00499713565466784,
       "mae_std": 0.0031720686444689163,
       "rmse_mean": 0.0058756345466675595,
@@ -76,7 +78,16 @@
       "r2_mean": 0.9925345777930663,
       "r2_std": 0.007828660728921492
     },
-    "train_seconds": 0.0049
+    "train_seconds": 0.0044,
+    "per_temperature": {
+      "24": {
+        "mae": 0.01952982444277867,
+        "rmse": 0.02000173914037458,
+        "r2": 0.9746570609382097,
+        "mape_pct": 2.555722828673437,
+        "n": 168
+      }
+    }
   },
   "feature_importance": [
     {
@@ -166,12 +177,80 @@
     "re_ohm": 0.05840675,
     "rct_ohm": 0.0837205
   },
+  "domain": {
+    "distance_p95": 1.2704628554480184,
+    "distance_median": 0.88945001292569,
+    "feature_ranges": {
+      "cycle": [
+        2.0,
+        166.0
+      ],
+      "v_mean": [
+        3.463185,
+        3.5805735
+      ],
+      "v_std": [
+        0.21236323999999998,
+        0.27982781
+      ],
+      "time_to_3_8v": [
+        178.63971999999998,
+        516.2428299999999
+      ],
+      "time_to_3_5v": [
+        1001.84875,
+        2232.9175999999998
+      ],
+      "v_at_500s": [
+        3.6622897,
+        3.8048568
+      ],
+      "temp_max": [
+        36.607363,
+        41.899216
+      ],
+      "time_to_temp_max": [
+        2361.4224,
+        3489.1329
+      ],
+      "temp_rise": [
+        13.403035,
+        17.46436
+      ],
+      "cc_charge_time": [
+        619.0071,
+        3327.3605000000002
+      ],
+      "cv_charge_time": [
+        5792.908,
+        8803.2225
+      ],
+      "charge_temp_max": [
+        26.49389,
+        35.298025
+      ],
+      "re_ohm": [
+        0.037432999,
+        0.066065107
+      ],
+      "rct_ohm": [
+        0.061011015,
+        0.09273705599999998
+      ]
+    },
+    "temperatures": [],
+    "currents": []
+  },
   "n_train": 468,
   "n_test": 168,
   "warnings": [],
   "dataset": {
+    "id": "nasa",
     "file": "nasa_battery_cycles.csv",
-    "sha256_16": "34169ce7ec688b5f"
+    "sha256_16": "d689be99e9b7d54c",
+    "name": "NASA PCoE Battery Data Set (B0005, B0006, B0007, B0018)",
+    "nominal_capacity_ah": 2.0,
+    "eol_capacity_ah": 1.4
   },
   "environment": {
     "python": "3.13.18",

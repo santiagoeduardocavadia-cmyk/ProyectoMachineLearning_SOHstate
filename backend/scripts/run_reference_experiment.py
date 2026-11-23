@@ -17,7 +17,9 @@ from pathlib import Path
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
 from app import config  # noqa: E402
+from app.data import dataset as ds  # noqa: E402
 from app.data.dataset import dataset_fingerprint, get_dataset  # noqa: E402
+from app.data.features import LEGACY_FEATURES  # noqa: E402
 from app.ml import store  # noqa: E402
 from app.ml.training import train_experiment  # noqa: E402
 
@@ -41,16 +43,42 @@ REFERENCE = {
         "features": None, "test_batteries": ["B0006"], "random_state": 42,
     },
 }
+# Los tres de NASA (24 °C) conservan las 14 características originales: así sus métricas no cambian
+# respecto de v1.1 y sirven de comparación "antes" frente a los multitemperatura.
+for _cfg in REFERENCE.values():
+    _cfg["features"] = list(LEGACY_FEATURES)
+
+MULTI_TEST = ["B0006", "B0031", "B0047"]  # una celda de test por temperatura: 24, 43 y 4 °C
+for _model, _label in (("gradient_boosting", "Gradient Boosting"), ("random_forest", "Random Forest"),
+                       ("ridge", "Ridge")):
+    REFERENCE[f"referencia_multitemp_soh_{_model}"] = {
+        "name": f"Multitemperatura SOH - {_label} (test B0006 24 °C, B0031 43 °C, B0047 4 °C)",
+        "description": "Entrenado con 29 celdas NASA a 4, 24 y 43 °C y corrientes de 1, 2 y 4 A, con temperatura "
+                       "y corriente como características. Evaluado en una celda nueva de cada temperatura.",
+        "target": "soh", "model_type": _model, "hyperparameters": {}, "features": None,
+        "test_batteries": MULTI_TEST, "random_state": 42, "dataset_id": ds.MULTITEMP_DATASET_ID,
+    }
+REFERENCE["referencia_multitemp_soh_sin_43C"] = {
+    "name": "Multitemperatura SOH - Gradient Boosting, 43 °C nunca vista (test = todas las celdas a 43 °C)",
+    "description": "Entrenado solo a 4 y 24 °C. Mide qué pasa con una temperatura que el modelo no vio.",
+    "target": "soh", "model_type": "gradient_boosting", "hyperparameters": {}, "features": None,
+    "test_batteries": ["B0006"], "test_temperatures": [43.0], "random_state": 42,
+    "dataset_id": ds.MULTITEMP_DATASET_ID,
+}
 
 
 def main() -> None:
-    df = get_dataset()
-    sha = dataset_fingerprint()
     for exp_id, cfg in REFERENCE.items():
+        dataset_id = cfg.get("dataset_id", ds.DEFAULT_DATASET_ID)
+        df = get_dataset(dataset_id)
+        meta = ds.dataset_meta(dataset_id)
+        info = {"name": meta["name"], "file": ds.dataset_path(dataset_id).name,
+                "nominal_capacity_ah": meta["nominal_capacity_ah"], "eol_capacity_ah": meta["eol_capacity_ah"]}
         target_dir = config.EXPERIMENTS_DIR / exp_id
         if target_dir.exists():
             shutil.rmtree(target_dir)
-        rec = store.save(train_experiment(df, dict(cfg)), dataset_sha=sha, experiment_id=exp_id)
+        rec = store.save(train_experiment(df, dict(cfg)), dataset_sha=dataset_fingerprint(dataset_id),
+                         experiment_id=exp_id, dataset_info=info)
         print(exp_id, json.dumps({k: round(v, 4) if isinstance(v, float) else v
                                   for k, v in rec["metrics"]["test"].items()}))
 

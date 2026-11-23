@@ -12,6 +12,8 @@ Es una reorganización en CSV de los mismos datos del NASA PCoE. Estructura espe
 Uso (desde backend/):
     python -m scripts.convert_kaggle RUTA/cleaned_dataset --batteries B0029 B0030 B0031 B0032 --out mis_baterias.csv
 Sin --batteries convierte todas las baterías (puede tardar varios minutos).
+Con --clean aplica además scripts/clean_cycles.py (separa tramos por temperatura y quita
+descargas cortadas y caídas aisladas; recomendado para B0038-B0044).
 """
 from __future__ import annotations
 
@@ -81,7 +83,7 @@ def convert(root: Path, batteries: list[str] | None) -> pd.DataFrame:
                              **feats, **charge_features(last_charge), **last_imp, "capacity_ah": cap})
                 last_charge = None
         print(f"{battery}: {n} descargas")
-    cols = ["battery_id", "cycle", "capacity_ah", "ambient_temperature", *[f for f in FEATURE_NAMES if f != "cycle"]]
+    cols = ["battery_id", "cycle", "capacity_ah", *[f for f in FEATURE_NAMES if f != "cycle"]]
     return pd.DataFrame(rows)[cols]
 
 
@@ -90,8 +92,14 @@ def main() -> None:
     p.add_argument("root", type=Path, help="carpeta cleaned_dataset (contiene metadata.csv y data/)")
     p.add_argument("--batteries", nargs="*", help="p. ej. B0029 B0030 B0031 B0032")
     p.add_argument("--out", type=Path, default=Path("dataset_kaggle.csv"))
+    p.add_argument("--clean", action="store_true", help="limpiar con scripts/clean_cycles.py")
     a = p.parse_args()
     df = convert(a.root, a.batteries)
+    if a.clean:
+        from scripts.clean_cycles import clean_cycles
+
+        df, report = clean_cycles(df)
+        print(pd.DataFrame(report).to_string(index=False))
     df.to_csv(a.out, index=False, float_format="%.6g")
     print(f"{len(df)} ciclos de {df['battery_id'].nunique()} baterías -> {a.out}")
 

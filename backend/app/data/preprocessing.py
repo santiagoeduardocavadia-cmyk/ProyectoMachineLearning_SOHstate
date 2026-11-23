@@ -13,6 +13,7 @@ Flujo (documentado en ``backend/docs/PREPROCESAMIENTO.md``):
 """
 from __future__ import annotations
 
+import io
 import logging
 import urllib.request
 import zipfile
@@ -27,10 +28,15 @@ from app.data.features import charge_features, discharge_features, impedance_fea
 log = logging.getLogger(__name__)
 
 
-def download_raw(raw_dir: Path = config.RAW_DIR, url: str = config.NASA_DATASET_URL) -> Path:
-    """Descarga el ZIP de la NASA y extrae los .mat de las baterías 5, 6, 7 y 18."""
+def download_raw(raw_dir: Path = config.RAW_DIR, url: str = config.NASA_DATASET_URL,
+                 batteries: list[str] | None = None) -> Path:
+    """Descarga el ZIP de la NASA y extrae los .mat de ``batteries`` (por defecto 5, 6, 7 y 18).
+
+    El ZIP oficial trae 6 sub-ZIP; se extraen todos los .mat y README que contengan.
+    """
+    batteries = batteries or config.DEFAULT_BATTERIES
     raw_dir.mkdir(parents=True, exist_ok=True)
-    if all((raw_dir / f"{b}.mat").exists() for b in config.DEFAULT_BATTERIES):
+    if all((raw_dir / f"{b}.mat").exists() for b in batteries):
         log.info("Archivos .mat ya presentes en %s", raw_dir)
         return raw_dir
     outer = raw_dir / "nasa_battery_dataset.zip"
@@ -38,13 +44,11 @@ def download_raw(raw_dir: Path = config.RAW_DIR, url: str = config.NASA_DATASET_
         log.info("Descargando %s ...", url)
         urllib.request.urlretrieve(url, outer)  # noqa: S310 (URL fija y oficial)
     with zipfile.ZipFile(outer) as zf:
-        inner_name = next(n for n in zf.namelist() if n.endswith(config.NASA_INNER_ZIP))
-        inner_path = raw_dir / config.NASA_INNER_ZIP
-        inner_path.write_bytes(zf.read(inner_name))
-    with zipfile.ZipFile(inner_path) as zf:
-        for member in zf.namelist():
-            if member.endswith(".mat") or member.endswith(".txt"):
-                (raw_dir / Path(member).name).write_bytes(zf.read(member))
+        for inner_name in (n for n in zf.namelist() if n.endswith(".zip")):
+            with zipfile.ZipFile(io.BytesIO(zf.read(inner_name))) as inner:
+                for member in inner.namelist():
+                    if member.endswith(".mat") or member.endswith(".txt"):
+                        (raw_dir / Path(member).name).write_bytes(inner.read(member))
     return raw_dir
 
 
@@ -73,7 +77,8 @@ def process_battery(battery_id: str, cycles: list[dict]) -> pd.DataFrame:
                 last_impedance = c["data"]
         elif ctype == "discharge":
             data = c["data"]
-            capacity = float(np.asarray(data.get("Capacity", np.nan)).ravel()[0])
+            cap_arr = np.asarray(data.get("Capacity", np.nan), dtype=float).ravel()
+            capacity = float(cap_arr[0]) if cap_arr.size else float("nan")  # algunas descargas no traen capacidad
             n_discharge += 1
             try:
                 feats = discharge_features(data)
@@ -130,7 +135,13 @@ def clean(df: pd.DataFrame, nominal_capacity: float = config.NOMINAL_CAPACITY_AH
 
 
 def build_processed_dataset(raw_dir: Path = config.RAW_DIR, out_file: Path = config.PROCESSED_FILE,
-                            batteries: list[str] | None = None) -> pd.DataFrame:
+                            batteries: list[str] | None = None, split_conditions: bool = False) -> pd.DataFrame:
+    """Procesa los .mat y escribe el CSV.
+
+    ``split_conditions=True`` (dataset multitemperatura) aplica además la limpieza de
+    ``scripts/clean_cycles.py``: separa en tramos las celdas ensayadas a varias temperaturas
+    (``B0042_04C``/``B0042_22C``) y quita descargas cortadas y caídas aisladas.
+    """
     batteries = batteries or config.DEFAULT_BATTERIES
     frames = []
     for b in batteries:
@@ -138,7 +149,15 @@ def build_processed_dataset(raw_dir: Path = config.RAW_DIR, out_file: Path = con
         if not path.exists():
             raise FileNotFoundError(f"No existe {path}. Ejecuta primero la descarga.")
         frames.append(process_battery(b, load_mat_cycles(path)))
-    df = add_targets(clean(pd.concat(frames, ignore_index=True)))
+    df = clean(pd.concat(frames, ignore_index=True))
+    if split_conditions:
+        from scripts.clean_cycles import clean_cycles
+
+        df, report = clean_cycles(df)
+        for r in report:
+            if r["status"] != "ok" or r["dropouts"] or r["isolated_drops"]:
+                log.info("limpieza %s", r)
+    df = add_targets(df)
     out_file.parent.mkdir(parents=True, exist_ok=True)
     df.to_csv(out_file, index=False, float_format="%.6g")
     return df
