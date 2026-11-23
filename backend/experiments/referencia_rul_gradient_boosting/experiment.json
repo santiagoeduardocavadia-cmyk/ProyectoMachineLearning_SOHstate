@@ -2,7 +2,7 @@
   "id": "referencia_rul_gradient_boosting",
   "name": "Referencia RUL - Gradient Boosting (test B0006)",
   "description": "RUL en ciclos; B0007 se excluye por no alcanzar el fin de vida.",
-  "created_at": "2026-11-23T06:10:52+00:00",
+  "created_at": "2026-11-23T18:50:02+00:00",
   "status": "completed",
   "config": {
     "target": "rul",
@@ -80,7 +80,7 @@
       "r2_mean": 0.5221558168699445,
       "r2_std": 0.07778994733089922
     },
-    "train_seconds": 0.1705,
+    "train_seconds": 0.308,
     "per_temperature": {
       "24": {
         "mae": 11.359272026629146,

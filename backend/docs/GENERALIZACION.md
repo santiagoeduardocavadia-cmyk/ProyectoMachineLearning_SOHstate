@@ -81,6 +81,7 @@ Esquemas:
    todas las condiciones.
 5. **Modelo recomendado para la web:**
    - `referencia_multitemp_soh_random_forest`, con MAE de test de 0.020 en B0006 (24 °C), B0031 (43 °C) y B0047 (4 °C).
+   - v1.5.0: elegido por validación cruzada entre 5 modelos (empatado con SVR). Ver [`docs/SELECCION_MODELO.md`](../../docs/SELECCION_MODELO.md).
    - En el esquema 3 Gradient Boosting y Random Forest son los más estables. Ridge es el mejor a 4 °C.
 
 ## Datos a 14 y 34 °C

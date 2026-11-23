@@ -171,3 +171,16 @@ def test_vida_restante_en_dias(client):
     est = life.estimate([{"prediction": 0.9}], "soh", [{"battery_id": "X", "soh_initial": 0.95, "soh_final": 0.75,
                                                          "n_cycles": 101}], nominal=2.0, eol_capacity=1.4)
     assert est["fade_trend_csv"] is None and abs(est["remaining_cycles"] - 100) < 1e-6
+
+
+def test_desempate_por_validacion_cruzada(client):
+    # Mismos datos de entrenamiento => misma distancia al dominio: decide el MAE de validación cruzada, no el de test.
+    a = _train(client, name="ridge", model_type="ridge")
+    b = _train(client, name="knn", model_type="knn")
+    body = client.post("/api/v1/predict/auto", files={"file": ("b.csv", _csv_of("B0006", "nasa"), "text/csv")},
+                       data={"target": "soh"}).json()
+    sel = body["selection"]
+    best = min((a, b), key=lambda e: e["metrics"]["cv"]["mae_mean"])
+    assert sel["selected_experiment_id"] == best["id"]
+    assert "validación cruzada" in sel["criterion"] and "validación cruzada" in sel["reason"]
+    assert all("cv_mae" in c for c in sel["candidates"])

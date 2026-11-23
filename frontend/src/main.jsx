@@ -5,7 +5,7 @@ import { Datasets, DatasetSelector } from "./Datasets";
 import { Train } from "./Train";
 import { Detail, History } from "./Experiments";
 import { Predict } from "./Predict";
-import { Heading, Load } from "./shared";
+import { Heading, Load, Table } from "./shared";
 import { datasetPath, useApi } from "./api";
 import "./style.css";
 
@@ -17,6 +17,49 @@ const pages = [
   ["predecir", "Predecir"],
   ["metodologia", "Metodología"],
 ];
+// Resultados de python -m scripts.compare_models (backend/docs/SELECCION_MODELO.md).
+const MODEL_CV = [
+  ["Random Forest", "2,80 ± 1,13", "—", "Elegido", "2,01"],
+  ["SVR (kernel RBF)", "3,07 ± 2,13", "1,00", "Empatado", "1,48"],
+  ["Gradient Boosting", "3,33 ± 1,60", "0,28", "Peor", "3,22"],
+  ["Regresión lineal (Ridge)", "3,95 ± 1,92", "0,13", "Peor", "2,10"],
+  ["K vecinos más cercanos", "4,31 ± 2,49", "0,002", "Peor (significativo)", "3,03"],
+];
+
+function ModelComparison() {
+  return (
+    <section className="panel">
+      <h2>Comparación de modelos: SOH multitemperatura</h2>
+      <p>
+        Error medio (MAE) en puntos de SOH sobre celdas que el modelo no vio,
+        con validación cruzada de 10 pliegues por celda física (29 celdas). La
+        prueba de Wilcoxon compara cada modelo con el mejor pliegue a pliegue:
+        con p ≥ 0,05 la diferencia puede deberse al azar. La columna de prueba
+        (B0006, B0031 y B0047) solo confirma; no se usó para elegir. Predecir
+        siempre la media daría 12,9 puntos.
+      </p>
+      <Table
+        label="Comparación de modelos por validación cruzada"
+        headers={[
+          "Modelo",
+          "MAE validación cruzada",
+          "p (vs. el mejor)",
+          "Resultado",
+          "MAE prueba",
+        ]}
+        rows={MODEL_CV}
+      />
+      <p className="muted">
+        Random Forest y SVR empatan: cualquiera de los dos es adecuado. Se usa
+        Random Forest porque tiene el menor error medio y es más estable entre
+        celdas (desviación 1,13 frente a 2,13). En el dataset NASA original (4
+        celdas a 24 °C) gana Ridge, porque los árboles no pueden predecir un SOH
+        más bajo que el mínimo visto.
+      </p>
+    </section>
+  );
+}
+
 function Method() {
   return (
     <>
@@ -55,6 +98,10 @@ function Method() {
             "Las copias con ruido, interpolación y mezcla de celdas mejoran poco dentro de un mismo dataset y no ayudan a generalizar a otras condiciones: solo recombinan lo que ya existe. Lo que reduce el error es entrenar con celdas reales de esas condiciones.",
           ],
           [
+            "¿Qué modelo se usa y por qué?",
+            "Se compararon 5 modelos (Random Forest, Gradient Boosting, Ridge, SVR y K vecinos) con validación cruzada por celda física: 10 pliegues que dejan fuera celdas completas, sin tocar las celdas de prueba. Se elige el de menor error en celdas no vistas. En Predecir, si varios experimentos se parecen igual a tus datos, gana el de menor error de validación cruzada.",
+          ],
+          [
             "Vida restante en días",
             "Ciclos restantes = (SOH actual − 70 %) ÷ pérdida de SOH por ciclo, tomando el ritmo mayor entre la tendencia del CSV y el de las celdas parecidas. Los ciclos se convierten en días con perfiles de uso de celdas Li-ion recargables (laptop, dron, linterna…). Es una estimación orientativa.",
           ],
@@ -65,6 +112,7 @@ function Method() {
           </section>
         ))}
       </div>
+      <ModelComparison />
     </>
   );
 }

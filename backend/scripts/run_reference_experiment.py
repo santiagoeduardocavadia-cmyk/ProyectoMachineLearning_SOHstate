@@ -49,13 +49,22 @@ for _cfg in REFERENCE.values():
     _cfg["features"] = list(LEGACY_FEATURES)
 
 MULTI_TEST = ["B0006", "B0031", "B0047"]  # una celda de test por temperatura: 24, 43 y 4 °C
-for _model, _label in (("gradient_boosting", "Gradient Boosting"), ("random_forest", "Random Forest"),
-                       ("ridge", "Ridge")):
+# Los 5 modelos, con los hiperparámetros que eligió la validación cruzada por celda física
+# (python -m scripts.compare_models; docs/SELECCION_MODELO.md). /predict/auto usa el de menor MAE de CV.
+MULTI_MODELS = {
+    "random_forest": ("Random Forest", {"min_samples_leaf": 5}),
+    "svr": ("SVR", {"C": 10.0, "epsilon": 0.01}),
+    "gradient_boosting": ("Gradient Boosting", {"learning_rate": 0.1, "max_depth": 2}),
+    "ridge": ("Ridge", {"alpha": 0.1}),
+    "knn": ("K vecinos", {"n_neighbors": 10}),
+}
+for _model, (_label, _hp) in MULTI_MODELS.items():
     REFERENCE[f"referencia_multitemp_soh_{_model}"] = {
         "name": f"Multitemperatura SOH - {_label} (test B0006 24 °C, B0031 43 °C, B0047 4 °C)",
         "description": "Entrenado con 29 celdas NASA a 4, 24 y 43 °C y corrientes de 1, 2 y 4 A, con temperatura "
-                       "y corriente como características. Evaluado en una celda nueva de cada temperatura.",
-        "target": "soh", "model_type": _model, "hyperparameters": {}, "features": None,
+                       "y corriente como características. Hiperparámetros elegidos por validación cruzada. "
+                       "Evaluado en una celda nueva de cada temperatura.",
+        "target": "soh", "model_type": _model, "hyperparameters": dict(_hp), "features": None,
         "test_batteries": MULTI_TEST, "random_state": 42, "dataset_id": ds.MULTITEMP_DATASET_ID,
     }
 REFERENCE["referencia_multitemp_soh_sin_43C"] = {

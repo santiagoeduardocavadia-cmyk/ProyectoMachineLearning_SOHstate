@@ -40,14 +40,21 @@ modelo no las vio):
 
 | CSV | Temperatura | Dominio | MAE SOH | R² | Celdas parecidas |
 |---|---|---|---|---|---|
-| `inferencia_24C_B0006.csv` (168 ciclos) | 24 °C | dentro | 2.4 pp | 0.94 | B0005, B0018, B0044_22C |
-| `inferencia_43C_B0031.csv` (40 ciclos) | 43 °C | borde | 0.4 pp | 0.92 | B0029, B0030, B0032 |
+| `inferencia_24C_B0006.csv` (168 ciclos) | 24 °C | dentro | 2.5 pp | 0.94 | B0005, B0018, B0044_22C |
+| `inferencia_43C_B0031.csv` (40 ciclos) | 43 °C | borde | 0.5 pp | 0.82 | B0029, B0030, B0032 |
 | `inferencia_4C_B0047.csv` (69 ciclos) | 4 °C | dentro | 1.7 pp | 0.90 | B0048, B0046, B0042_04C |
-| `inferencia_24C_B0006_primeros40.csv` (celda sana) | 24 °C | dentro | 3.1 pp | −0.19 | B0043_22C, B0042_22C, B0007 |
+| `inferencia_24C_B0006_primeros40.csv` (celda sana) | 24 °C | dentro | 3.2 pp | −0.20 | B0043_22C, B0042_22C, B0007 |
 
 El R² negativo de la celda sana no es un error grave: con solo 40 ciclos casi iguales, la varianza del SOH real es muy
-pequeña y cualquier error la supera. El MAE (3.1 pp) es el número que importa. Además, al inicio el SOH real pasa de 100 %
+pequeña y cualquier error la supera. El MAE (3.2 pp) es el número que importa. Además, al inicio el SOH real pasa de 100 %
 y un Random Forest no puede predecir por encima de lo que vio, así que lo subestima un poco.
+
+## 3.1 ¿Qué modelo se usa y por qué?
+
+Se compararon 5 modelos con validación cruzada de 10 pliegues por celda física. **Random Forest** tiene el menor error
+en celdas no vistas (2.8 pp), empatado con SVR (Wilcoxon p = 1.0). Gradient Boosting, Ridge y KNN quedan peor, y KNN de
+forma significativa (p = 0.002). En Predecir, si varios experimentos se parecen igual a tus datos, gana el de menor
+error de validación cruzada. Detalle en [SELECCION_MODELO.md](SELECCION_MODELO.md).
 
 ## 4. ¿Sirvió el data augmentation?
 
@@ -82,7 +89,7 @@ típico:
 **Cuánto dura un ciclo.** Una carga dura capacidad actual ÷ corriente: una celda con 1.78 Ah a 0.5 A dura unas 3.6 h.
 En **uso constante** (descargar y recargar sin parar, como en el laboratorio) el ciclo completo dura la descarga más la
 recarga, medidas en el propio CSV (fases CC y CV de la carga). Para B0006 son ≈ 3 h 40 min por ciclo, ≈ 6.6 ciclos al día,
-así que con sus 91 ciclos restantes le quedarían ≈ 14 días de uso continuo. Las corrientes de cada aparato son típicas por
+así que con sus 92 ciclos restantes le quedarían ≈ 14 días de uso continuo. Las corrientes de cada aparato son típicas por
 celda 18650 y son un supuesto.
 
 Las pilas AA del control remoto del televisor no aparecen porque son alcalinas y no recargables: no tienen ciclos de carga.
@@ -91,8 +98,8 @@ Las celdas de la NASA son Li-ion 18650, como las de laptops, power banks, drones
 **Qué tan buena es la estimación.**
 - Con las 6 celdas multitemperatura que llegan al fin de vida, cortando la curva a la mitad, el error mediano fue de unos
   12 ciclos (≈ 24 %).
-- Ejemplo: B0006 con sus primeros 40 ciclos estima **91 ciclos** restantes; en la realidad le quedaban **69** (llegó al 70 % en
-  el ciclo 109). Con un dron son ≈ 30 días; con una laptop, ≈ 3 meses; sin parar, ≈ 14 días.
+- Ejemplo: B0006 con sus primeros 40 ciclos estima **92 ciclos** restantes; en la realidad le quedaban **69** (llegó al 70 % en
+  el ciclo 109). Con un dron son ≈ 31 días; con una laptop, ≈ 3 meses; sin parar, ≈ 14 días.
 - La estimación tiende a ser **optimista**: las celdas se degradan más rápido al final de la vida (la "rodilla"). Por eso se
   usa el ritmo mayor y se dice el margen (±25–50 %).
 
