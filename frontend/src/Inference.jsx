@@ -52,6 +52,9 @@ export function Candidates({ items, target, showHeading = true }) {
           "Dataset",
           "Estado de dominio",
           "Distancia relativa mediana",
+          "MAE validación cruzada (" +
+            (target === "soh" ? "fracción" : unit[target]) +
+            ")",
           "MAE de prueba (" +
             (target === "soh" ? "fracción" : unit[target]) +
             ")",
@@ -62,6 +65,7 @@ export function Candidates({ items, target, showHeading = true }) {
           c.dataset_id,
           c.domain_status,
           num(c.distance_ratio_median, 3),
+          num(c.cv_mae, 5),
           num(c.test_mae, 5),
           c.eligible === false ? c.reason : null,
         ])}
