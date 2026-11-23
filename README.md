@@ -61,7 +61,13 @@ de test de ese dataset. SOH y RUL se recalculan en el backend; los datasets subi
 
 **Usar el dataset de Kaggle** ([patrickfleith/nasa-battery-dataset](https://www.kaggle.com/datasets/patrickfleith/nasa-battery-dataset)):
 descarga y descomprime `cleaned_dataset/` y conviértelo al formato de subida con
-`python -m scripts.convert_kaggle RUTA/cleaned_dataset --batteries B0029 B0030 B0031 B0032 --out mis_baterias.csv`.
+`python -m scripts.convert_kaggle RUTA/cleaned_dataset --batteries B0029 B0030 B0031 B0032 --out mis_baterias.csv`
+(añade `--clean` para B0038–B0044, que traen tramos a varias temperaturas y descargas cortadas).
+
+**Datos aumentados (data augmentation):** `python -m scripts.augment_dataset MI.csv --test B0006` genera un CSV con
+baterías virtuales que se sube como cualquier dataset; entrena con la misma batería de test. Los CSV limpios y
+aumentados de NASA y Kaggle están en `datos_aumentados/`. Detalles y mediciones:
+[PREPROCESAMIENTO.md §9](backend/docs/PREPROCESAMIENTO.md) y [docs/PLAN_MEDICIONES.md](docs/PLAN_MEDICIONES.md).
 
 Cada experimento queda guardado en `backend/experiments/<id>/`:
 `experiment.json` (configuración, métricas, importancias, versiones de librerías, huella del dataset),

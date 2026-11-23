@@ -73,3 +73,31 @@ validación de tipos y ciclos repetidos, descarte de capacidades imposibles (`cl
 con la capacidad nominal y el umbral de EOL declarados al subirlo (por defecto 2.0 Ah y 70 % de la nominal).
 Los objetivos que traiga el archivo se ignoran: así todas las fuentes usan exactamente la misma definición de SOH y RUL.
 Las características ausentes quedan vacías y el entrenamiento solo usa las que tienen datos.
+
+## 9. Limpieza y aumento de datos (scripts, fuera de la API)
+El aumento se aplica a los **archivos de datos**, no dentro de la página: la API no cambia (v1.1.1).
+Plan y decisiones: [docs/PLAN_MEDICIONES.md](../../docs/PLAN_MEDICIONES.md).
+
+### 9.1 Limpieza: `python -m scripts.clean_cycles ENTRADA.csv`
+Necesaria para los CSV de Kaggle B0038–B0044 (sobre NASA no cambia nada):
+1. **Separar por temperatura.** Una batería ensayada a varias temperaturas se parte en tramos (`B0038_24C`, `B0038_44C`):
+   el salto de capacidad al cambiar de 24 °C a 44 °C es efecto de la temperatura, no degradación.
+2. **Descargas cortadas.** Se quitan los ciclos con capacidad < 25 % del percentil 90 del tramo
+   (los ~0.05–0.1 Ah de B0041 y del tramo a 4 °C de B0042–B0044).
+3. **Caídas aisladas.** Se quitan los ciclos con capacidad < 70 % de la mediana móvil de 5 ciclos (p. ej. los 0.43 Ah de B0040).
+   Las subidas pequeñas tras un reposo (recuperación de capacidad) se conservan.
+4. **Tramos cortos.** Se descartan los tramos con < 15 ciclos (los 12 ciclos a 24 °C de B0038–B0040).
+
+`convert_kaggle --clean` aplica la misma limpieza al convertir.
+
+### 9.2 Aumento: `python -m scripts.augment_dataset ENTRADA.csv --test B0006`
+Añade **baterías virtuales** a partir de las de entrenamiento:
+- `~ruidoN`: ruido gaussiano del 3 % de la σ de cada característica.
+- `~interpN`: interpolación entre ciclos consecutivos.
+- `~mixN`: mezcla con otra batería de capacidad parecida.
+
+Reglas para no hacer trampa:
+- Las baterías de `--test` se copian sin tocar y no generan baterías virtuales. Al entrenar se usa **exactamente** ese test.
+- Si una celda física quedó partida en tramos de temperatura, **todos sus tramos** van a `--test`.
+- Con un CSV aumentado, la **validación cruzada y el error de train salen optimistas**, porque las baterías virtuales caen
+  en otros pliegues. La métrica válida es la de **test**.
