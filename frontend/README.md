@@ -27,6 +27,7 @@ npm run preview
 - **Experimentos** permite comparar modelos y abrir sus métricas, validación cruzada, gráficos e inferencia por batería, valores manuales o CSV. Desde el detalle también se puede descargar el modelo o borrar el experimento.
 - En **Inferencia**, los resultados incluyen MAE, RMSE, R², MAPE y número de muestras cuando la API devuelve métricas. Para comparar un CSV con las predicciones, incluye la columna del objetivo (`soh`, `rul` o `capacity_ah`).
 - **Metodología** explica la separación por batería, la línea base, la validación cruzada, la selección de variables y el caso de B0007.
+- **Predecir** (API v1.3.0) recibe un CSV de hasta 5 MB desde el menú principal. Compara los modelos para el objetivo elegido y muestra fiabilidad, celdas similares y predicciones. Cuando hay mediciones reales, también muestra el error y el gráfico de comparación.
 
 La coordinación entre ramas y el contrato de datos se describen en [CONTEXTO_CHATGPT.md](../CONTEXTO_CHATGPT.md). Las peticiones de cambios al contrato se documentan en `frontend/PETICIONES_API.md` cuando se necesitan.
 
