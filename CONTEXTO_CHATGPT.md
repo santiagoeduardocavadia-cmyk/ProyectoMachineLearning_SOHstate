@@ -482,6 +482,14 @@ elegido con `reason` y una tabla de `candidates` (nombre, dataset, estado de dom
 - **UI (ya implementada en `frontend/src/Predict.jsx`):** tarjeta "Vida restante" con selector de uso, tabla de perfiles
   y columnas "Ciclos restantes" y "Días de vida (perfil)" en la tabla de predicciones.
 
+### 4.7 Novedades v1.5.0: el modelo se elige por validación cruzada
+- Cada elemento de `selection.candidates` trae `cv_mae` (MAE medio de la validación cruzada por celda física del experimento).
+- `/predict/auto` desempata entre experimentos igual de parecidos al CSV por **menor `cv_mae`**, ya no por el MAE de test.
+  `selection.criterion` y `selection.reason` lo dicen.
+- Experimentos de referencia multitemperatura para los 5 modelos: `referencia_multitemp_soh_{random_forest,svr,gradient_boosting,ridge,knn}`,
+  con hiperparámetros elegidos por validación cruzada (`scripts/compare_models.py`, `docs/SELECCION_MODELO.md`).
+- **UI (ya implementada):** columna "MAE validación cruzada" en "Modelos considerados" y tabla de comparación en Metodología.
+
 ## 5. Qué debe tener el frontend (requisitos del curso)
 
 1. **Datos:** resumen del dataset, tabla de baterías y curva de degradación (capacidad vs ciclo con la línea de EOL).
@@ -558,3 +566,4 @@ Commits pequeños y frecuentes, en español, y que el proyecto corra después de
 | 1.2.0 | 2026-11-23 | Dataset `nasa_multitemp`, características `ambient_temperature` y `discharge_current_a`, `test_temperatures`, `metrics.per_temperature`, CV por celda física, `domain` en inferencia y `POST /predict/auto` |
 | 1.3.0 | 2026-11-23 | `similar_cells` y `selection.similar_cells_summary` en `POST /predict/auto` (pestaña "Predecir") |
 | 1.4.0 | 2026-11-23 | `life_estimate` y `remaining_cycles` en `POST /predict/auto` (vida restante en ciclos y días por perfil de uso, duración de una carga y del ciclo continuo) |
+| 1.5.0 | 2026-11-23 | `cv_mae` en `selection.candidates`; desempate de `/predict/auto` por validación cruzada; referencias SVR y KNN |

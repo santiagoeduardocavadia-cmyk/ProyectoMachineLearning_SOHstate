@@ -94,12 +94,19 @@ Desde v1.2.0:
 - Cada predicción dice si los datos están **dentro, en el borde o fuera** de lo que el modelo conoce.
 - `POST /api/v1/predict/auto` elige solo el experimento adecuado para un CSV.
 
-| Experimento (multitemperatura) | MAE test | R² | Test |
-|---|---|---|---|
-| SOH – Random Forest | 0.020 | 0.961 | B0006 (24 °C), B0031 (43 °C), B0047 (4 °C) |
-| SOH – Ridge | 0.021 | 0.929 | ídem |
-| SOH – Gradient Boosting | 0.028 | 0.925 | ídem |
-| SOH – Gradient Boosting, 43 °C nunca vista | 0.046 | — | las 7 celdas a 43-44 °C |
+| Experimento (multitemperatura) | MAE CV (10 pliegues por celda) | MAE test | R² test | Test |
+|---|---|---|---|---|
+| SOH – **Random Forest** (elegido) | **0.028** | 0.020 | 0.958 | B0006 (24 °C), B0031 (43 °C), B0047 (4 °C) |
+| SOH – SVR (empatado) | 0.031 | 0.015 | 0.977 | ídem |
+| SOH – Gradient Boosting | 0.033 | 0.032 | 0.896 | ídem |
+| SOH – Ridge | 0.040 | 0.021 | 0.929 | ídem |
+| SOH – K vecinos | 0.043 | 0.030 | 0.917 | ídem |
+| SOH – Gradient Boosting, 43 °C nunca vista | — | 0.046 | — | las 7 celdas a 43-44 °C |
+
+**¿Qué modelo se usa y por qué? (v1.5.0)** El modelo se elige por validación cruzada por celda física, no por el test:
+Random Forest tiene el menor error en celdas no vistas y SVR queda empatado (prueba de Wilcoxon). `/predict/auto`
+desempata con ese mismo criterio. Detalle: [docs/SELECCION_MODELO.md](docs/SELECCION_MODELO.md) y
+`python -m scripts.compare_models`.
 
 Comparativa completa, con y sin data augmentation: [backend/docs/GENERALIZACION.md](backend/docs/GENERALIZACION.md).
 
