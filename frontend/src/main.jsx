@@ -4,6 +4,7 @@ import { Data } from "./Data";
 import { Datasets, DatasetSelector } from "./Datasets";
 import { Train } from "./Train";
 import { Detail, History } from "./Experiments";
+import { Predict } from "./Predict";
 import { Heading, Load } from "./shared";
 import { datasetPath, useApi } from "./api";
 import "./style.css";
@@ -13,6 +14,7 @@ const pages = [
   ["cargar-datos", "Cargar datos"],
   ["entrenar", "Entrenamiento"],
   ["experimentos", "Experimentos"],
+  ["predecir", "Predecir"],
   ["metodologia", "Metodología"],
 ];
 function Method() {
@@ -73,7 +75,9 @@ function App() {
   const supportsDomain = !incompatible && Number(version?.split(".")[1]) >= 2;
   const [selectedId, setSelectedId] = useState("nasa");
   const catalog = useApi(
-    version && !incompatible
+    version &&
+      !incompatible &&
+      ["datos", "entrenar", "cargar-datos"].includes(page)
       ? legacy
         ? datasetPath("/dataset/summary", "nasa")
         : "/datasets"
@@ -194,6 +198,8 @@ function App() {
           <History />
         ) : page === "experimento" && id ? (
           <Detail key={id} id={id} supportsDomain={supportsDomain} />
+        ) : page === "predecir" ? (
+          <Predict />
         ) : page === "metodologia" ? (
           <Method />
         ) : (

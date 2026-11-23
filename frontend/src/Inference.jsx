@@ -20,7 +20,7 @@ const domainColors = {
   fuera: "domain-outside",
 };
 
-function DomainNotice({ domain }) {
+export function DomainNotice({ domain }) {
   if (!domain) return null;
   return (
     <div
@@ -41,10 +41,10 @@ function DomainNotice({ domain }) {
   );
 }
 
-function Candidates({ items, target }) {
+export function Candidates({ items, target, showHeading = true }) {
   return (
     <>
-      <h3>Modelos candidatos</h3>
+      {showHeading && <h3>Modelos candidatos</h3>}
       <Table
         label="Modelos candidatos"
         headers={[
@@ -70,12 +70,13 @@ function Candidates({ items, target }) {
   );
 }
 
-function Predictions({ result }) {
+export function PredictionTable({ result, children, showReliability = false }) {
   const [page, setPage] = useState(0);
-  const { predictions, target, metrics, domain, selection } = result;
+  const { predictions, target, domain } = result;
   const showDomain =
-    domain != null || predictions.some((p) => p.domain_status != null);
-  const errorUnit = target === "soh" ? "pp" : unit[target];
+    showReliability ||
+    domain != null ||
+    predictions.some((p) => p.domain_status != null);
   const start = page * 25;
   const headers = ["Muestra", "Predicción", "Real"];
   if (target === "soh") headers.push("Capacidad estimada (Ah)");
@@ -102,6 +103,33 @@ function Predictions({ result }) {
     if (showDomain) row.push(p.domain_status);
     return row;
   });
+  return (
+    <>
+      <h3>Resultados · {predictions.length}</h3>
+      {children}
+      <Table headers={headers} rows={rows} label="Resultados de inferencia" />
+      {predictions.length > 25 && (
+        <div className="pager">
+          <span>
+            Página {page + 1} de {Math.ceil(predictions.length / 25)}
+          </span>
+          <button onClick={() => setPage(page - 1)} disabled={!page}>
+            Anterior
+          </button>
+          <button
+            onClick={() => setPage(page + 1)}
+            disabled={start + 25 >= predictions.length}
+          >
+            Siguiente
+          </button>
+        </div>
+      )}
+    </>
+  );
+}
+function Predictions({ result }) {
+  const { target, metrics, domain, selection } = result;
+  const errorUnit = target === "soh" ? "pp" : unit[target];
   return (
     <>
       <Warnings items={result.warnings?.filter((w) => w !== domain?.message)} />
@@ -144,34 +172,21 @@ function Predictions({ result }) {
           />
         </>
       )}
-      <h3>Resultados · {predictions.length}</h3>
-      <DomainNotice domain={domain} />
-      <Table headers={headers} rows={rows} label="Resultados de inferencia" />
-      {predictions.length > 25 && (
-        <div className="pager">
-          <span>
-            Página {page + 1} de {Math.ceil(predictions.length / 25)}
-          </span>
-          <button onClick={() => setPage(page - 1)} disabled={!page}>
-            Anterior
-          </button>
-          <button
-            onClick={() => setPage(page + 1)}
-            disabled={start + 25 >= predictions.length}
-          >
-            Siguiente
-          </button>
-        </div>
-      )}
+      <PredictionTable result={result}>
+        <DomainNotice domain={domain} />
+      </PredictionTable>
     </>
   );
 }
-function PredictForm({
-  mode,
+export function PredictForm({
+  mode = autoMode,
   experiment,
   path,
   batteries = [],
   features = [],
+  ResultView = Predictions,
+  submitLabel = "Calcular predicción",
+  formClassName,
 }) {
   const [result, setResult] = useState(null);
   const [error, setError] = useState(null);
@@ -180,7 +195,7 @@ function PredictForm({
   const automatic = mode === autoMode;
   const csvMode = automatic || mode === "Archivo CSV";
   const csvTarget = automatic ? autoTarget : experiment.config.target;
-  const names = experiment.config.features;
+  const names = experiment?.config.features ?? [];
   async function predict(event) {
     event.preventDefault();
     const form = new FormData(event.currentTarget);
@@ -189,12 +204,12 @@ function PredictForm({
     setError(null);
     try {
       let body,
-        endpoint = path + "/predict";
+        endpoint = automatic ? "/predict/auto" : path + "/predict";
       if (csvMode) {
         if (form.get("file").size > 5 * 1024 * 1024)
           throw new Error("El CSV debe pesar como máximo 5 MB.");
         body = form;
-        endpoint = automatic ? "/predict/auto" : path + "/predict/csv";
+        if (!automatic) endpoint += "/csv";
       } else if (mode === "Valores manuales") {
         body = {
           samples: [
@@ -227,7 +242,7 @@ function PredictForm({
   }
   return (
     <>
-      <form onSubmit={predict}>
+      <form onSubmit={predict} className={formClassName}>
         <fieldset className="flat" disabled={busy}>
           {mode === "Por batería" && (
             <div className="fields">
@@ -314,12 +329,13 @@ function PredictForm({
               )}
               <p className="muted">
                 Para obtener métricas, incluye la columna real{" "}
-                {csvTarget === "capacity" ? "capacity_ah" : csvTarget}.
+                {csvTarget === "capacity" ? "capacity_ah" : csvTarget}
+                {!experiment && csvTarget === "soh" ? " o capacity_ah" : ""}.
               </p>
             </>
           )}
           <button className="primary" disabled={busy}>
-            {busy ? "Calculando…" : "Calcular predicción"}
+            {busy ? "Calculando…" : submitLabel}
           </button>
         </fieldset>
       </form>
@@ -329,7 +345,7 @@ function PredictForm({
         Array.isArray(error.details?.candidates) && (
           <Candidates items={error.details.candidates} target={autoTarget} />
         )}
-      {result && <Predictions result={result} />}
+      {result && <ResultView result={result} />}
     </>
   );
 }

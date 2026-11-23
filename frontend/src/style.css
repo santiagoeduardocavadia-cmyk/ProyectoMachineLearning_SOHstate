@@ -721,3 +721,47 @@ footer {
 .dataset-suggestion {
   margin-block: 0 1.5rem;
 }
+.prediction-upload .flat {
+  display: grid;
+  grid-template-columns: minmax(12rem, 1fr) minmax(12rem, 1.4fr);
+  gap: 0.8rem 1.25rem;
+  align-items: start;
+}
+.prediction-upload .flat > label,
+.prediction-upload .flat > p,
+.prediction-upload .flat > button {
+  margin: 0;
+}
+.prediction-upload .flat > p {
+  grid-column: 1 / -1;
+}
+.prediction-upload .flat > button {
+  justify-self: start;
+}
+.prediction-summary {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 1rem;
+}
+.prediction-summary a {
+  overflow-wrap: anywhere;
+}
+.prediction-summary .domain-notice {
+  margin-bottom: 0;
+}
+.prediction-candidates summary {
+  cursor: pointer;
+  font-weight: 650;
+}
+.prediction-candidates[open] summary {
+  margin-bottom: 1rem;
+}
+@media (max-width: 760px) {
+  .prediction-upload .flat,
+  .prediction-summary {
+    grid-template-columns: 1fr;
+  }
+  .prediction-summary {
+    gap: 0;
+  }
+}
