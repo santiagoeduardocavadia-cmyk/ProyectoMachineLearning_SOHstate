@@ -240,6 +240,8 @@ export function Data({ dataset, selector }) {
                     headers={[
                       "Batería",
                       "Ciclos",
+                      "Temperatura ambiente (°C)",
+                      "Corriente de descarga (A)",
                       "Inicial (Ah)",
                       "Final (Ah)",
                       "Ciclo de fin de vida",
@@ -247,6 +249,8 @@ export function Data({ dataset, selector }) {
                     rows={s.batteries.map((b) => [
                       b.battery_id,
                       b.n_cycles,
+                      num(b.ambient_temperature),
+                      num(b.discharge_current_a),
                       num(b.initial_capacity_ah, 3),
                       num(b.final_capacity_ah, 3),
                       b.eol_cycle ?? "Sin observar",

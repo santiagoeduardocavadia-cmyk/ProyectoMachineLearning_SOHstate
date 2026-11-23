@@ -70,6 +70,7 @@ function App() {
   const version = health.data?.api_version;
   const incompatible = version && version.split(".")[0] !== "1";
   const legacy = version?.startsWith("1.0.");
+  const supportsDomain = !incompatible && Number(version?.split(".")[1]) >= 2;
   const [selectedId, setSelectedId] = useState("nasa");
   const catalog = useApi(
     version && !incompatible
@@ -182,6 +183,9 @@ function App() {
                   dataset={dataset}
                   selector={selector}
                   legacy={legacy}
+                  supportsDomain={supportsDomain}
+                  multitemp={datasets.find((d) => d.id === "nasa_multitemp")}
+                  onSelectDataset={setSelectedId}
                 />
               );
             }}
@@ -189,7 +193,7 @@ function App() {
         ) : page === "experimentos" ? (
           <History />
         ) : page === "experimento" && id ? (
-          <Detail key={id} id={id} />
+          <Detail key={id} id={id} supportsDomain={supportsDomain} />
         ) : page === "metodologia" ? (
           <Method />
         ) : (

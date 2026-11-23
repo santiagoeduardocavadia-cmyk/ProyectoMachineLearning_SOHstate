@@ -696,3 +696,28 @@ footer {
   margin: 0 0 0.25rem;
   overflow-wrap: anywhere;
 }
+.domain-notice {
+  padding: 1rem;
+  margin-block: 0.75rem;
+  background: #f2f4f4;
+  border-inline-start: 4px solid currentColor;
+  border-radius: 4px;
+}
+.domain-notice p {
+  margin: 0.35rem 0 0;
+}
+.domain-inside {
+  background: #e3f3e7;
+  color: #18522c;
+}
+.domain-edge {
+  background: #fff1ce;
+  color: #754600;
+}
+.domain-outside {
+  background: #fce8e6;
+  color: #882b25;
+}
+.dataset-suggestion {
+  margin-block: 0 1.5rem;
+}

@@ -7,20 +7,81 @@ import {
   Warnings,
   measure,
   num,
+  quantities,
   scale,
   targetName,
   unit,
 } from "./shared";
 
+const autoMode = "Selección automática (el sistema elige el modelo)";
+const domainColors = {
+  dentro: "domain-inside",
+  borde: "domain-edge",
+  fuera: "domain-outside",
+};
+
+function DomainNotice({ domain }) {
+  if (!domain) return null;
+  return (
+    <div
+      className={"domain-notice " + (domainColors[domain.status] || "")}
+      role="status"
+    >
+      <strong>Fiabilidad: {domain.status || "sin clasificar"}</strong>
+      <p>{domain.message}</p>
+      {domain.unseen_temperatures?.length > 0 && (
+        <p>
+          Temperaturas no vistas: {quantities(domain.unseen_temperatures, "°C")}
+        </p>
+      )}
+      {domain.unseen_currents?.length > 0 && (
+        <p>Corrientes no vistas: {quantities(domain.unseen_currents, "A")}</p>
+      )}
+    </div>
+  );
+}
+
+function Candidates({ items, target }) {
+  return (
+    <>
+      <h3>Modelos candidatos</h3>
+      <Table
+        label="Modelos candidatos"
+        headers={[
+          "Nombre",
+          "Dataset",
+          "Estado de dominio",
+          "Distancia relativa mediana",
+          "MAE de prueba (" +
+            (target === "soh" ? "fracción" : unit[target]) +
+            ")",
+          "Motivo de exclusión",
+        ]}
+        rows={items.map((c) => [
+          c.name ?? c.experiment_id,
+          c.dataset_id,
+          c.domain_status,
+          num(c.distance_ratio_median, 3),
+          num(c.test_mae, 5),
+          c.eligible === false ? c.reason : null,
+        ])}
+      />
+    </>
+  );
+}
+
 function Predictions({ result }) {
   const [page, setPage] = useState(0);
-  const { predictions, target, metrics } = result;
+  const { predictions, target, metrics, domain, selection } = result;
+  const showDomain =
+    domain != null || predictions.some((p) => p.domain_status != null);
   const errorUnit = target === "soh" ? "pp" : unit[target];
   const start = page * 25;
   const headers = ["Muestra", "Predicción", "Real"];
   if (target === "soh") headers.push("Capacidad estimada (Ah)");
   if (target === "capacity") headers.push("SOH estimado (%)");
   if (target !== "rul") headers.push("Estado");
+  if (showDomain) headers.push("Fiabilidad");
   const rows = predictions.slice(start, start + 25).map((p, i) => {
     const row = [
       p.battery_id
@@ -38,11 +99,27 @@ function Predictions({ result }) {
           {p.health_status?.replaceAll("_", " ") || "—"}
         </span>,
       );
+    if (showDomain) row.push(p.domain_status);
     return row;
   });
   return (
     <>
-      <Warnings items={result.warnings} />
+      <Warnings items={result.warnings?.filter((w) => w !== domain?.message)} />
+      {selection && (
+        <>
+          <h3>Modelo elegido</h3>
+          <a
+            href={
+              "#experimento/" +
+              encodeURIComponent(selection.selected_experiment_id)
+            }
+          >
+            {selection.selected_experiment_id}
+          </a>
+          <p>{selection.reason}</p>
+          <Candidates items={selection.candidates} target={target} />
+        </>
+      )}
       {metrics != null && (
         <>
           <h3>Métricas de inferencia</h3>
@@ -68,6 +145,7 @@ function Predictions({ result }) {
         </>
       )}
       <h3>Resultados · {predictions.length}</h3>
+      <DomainNotice domain={domain} />
       <Table headers={headers} rows={rows} label="Resultados de inferencia" />
       {predictions.length > 25 && (
         <div className="pager">
@@ -98,6 +176,10 @@ function PredictForm({
   const [result, setResult] = useState(null);
   const [error, setError] = useState(null);
   const [busy, setBusy] = useState(false);
+  const [autoTarget, setAutoTarget] = useState("soh");
+  const automatic = mode === autoMode;
+  const csvMode = automatic || mode === "Archivo CSV";
+  const csvTarget = automatic ? autoTarget : experiment.config.target;
   const names = experiment.config.features;
   async function predict(event) {
     event.preventDefault();
@@ -108,11 +190,11 @@ function PredictForm({
     try {
       let body,
         endpoint = path + "/predict";
-      if (mode === "Archivo CSV") {
+      if (csvMode) {
         if (form.get("file").size > 5 * 1024 * 1024)
           throw new Error("El CSV debe pesar como máximo 5 MB.");
         body = form;
-        endpoint += "/csv";
+        endpoint = automatic ? "/predict/auto" : path + "/predict/csv";
       } else if (mode === "Valores manuales") {
         body = {
           samples: [
@@ -194,8 +276,28 @@ function PredictForm({
               </div>
             </>
           )}
-          {mode === "Archivo CSV" && (
+          {csvMode && (
             <>
+              {automatic && (
+                <label>
+                  Objetivo de la selección automática
+                  <select
+                    name="target"
+                    value={autoTarget}
+                    onChange={(e) => {
+                      setAutoTarget(e.target.value);
+                      setResult(null);
+                      setError(null);
+                    }}
+                  >
+                    {Object.entries(targetName).map(([key, label]) => (
+                      <option key={key} value={key}>
+                        {label}
+                      </option>
+                    ))}
+                  </select>
+                </label>
+              )}
               <label>
                 Archivo CSV (máx. 5 MB)
                 <input
@@ -205,13 +307,14 @@ function PredictForm({
                   required
                 />
               </label>
-              <p className="muted">Columnas del modelo: {names.join(", ")}.</p>
+              {!automatic && (
+                <p className="muted">
+                  Columnas del modelo: {names.join(", ")}.
+                </p>
+              )}
               <p className="muted">
                 Para obtener métricas, incluye la columna real{" "}
-                {experiment.config.target === "capacity"
-                  ? "capacity_ah"
-                  : experiment.config.target}
-                .
+                {csvTarget === "capacity" ? "capacity_ah" : csvTarget}.
               </p>
             </>
           )}
@@ -221,11 +324,16 @@ function PredictForm({
         </fieldset>
       </form>
       <ErrorBox error={error} />
+      {automatic &&
+        error?.code === "no_compatible_experiment" &&
+        Array.isArray(error.details?.candidates) && (
+          <Candidates items={error.details.candidates} target={autoTarget} />
+        )}
       {result && <Predictions result={result} />}
     </>
   );
 }
-export function Inference({ experiment, path }) {
+export function Inference({ experiment, path, supportsDomain }) {
   const [mode, setMode] = useState("Por batería");
   const datasetId = experiment.config.dataset_id || "nasa";
   const summary = useApi(
@@ -240,11 +348,19 @@ export function Inference({ experiment, path }) {
     <section className="panel">
       <h2>Inferencia</h2>
       <p>
-        Predice {targetName[experiment.config.target].toLowerCase()} con este
-        modelo.
+        {mode === autoMode
+          ? "Carga un CSV para comparar los experimentos guardados del objetivo elegido."
+          : "Predice " +
+            targetName[experiment.config.target].toLowerCase() +
+            " con este modelo."}
       </p>
       <div className="tabs">
-        {["Por batería", "Valores manuales", "Archivo CSV"].map((m) => (
+        {[
+          "Por batería",
+          "Valores manuales",
+          "Archivo CSV",
+          ...(supportsDomain ? [autoMode] : []),
+        ].map((m) => (
           <button key={m} aria-pressed={mode === m} onClick={() => setMode(m)}>
             {m}
           </button>

@@ -41,12 +41,15 @@ export async function request(path, options = {}) {
         fields.push(name + ": " + count + " valores inválidos");
       }
     }
-    throw new Error(
+    const error = new Error(
       [
         issue?.message || "La API devolvió un error HTTP " + response.status,
         ...fields,
       ].join("\n"),
     );
+    error.code = issue?.code;
+    error.details = issue?.details;
+    throw error;
   }
   if (body == null)
     throw new Error("La API devolvió una respuesta vacía o ilegible.");
