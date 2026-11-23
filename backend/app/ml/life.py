@@ -29,16 +29,25 @@ import numpy as np
 MIN_TREND_CYCLES = 10
 MIN_FADE = 1e-5
 
-# Ciclos completos equivalentes por día para celdas Li-ion recargables.
+# Ciclos completos equivalentes por día y corriente típica que pide cada aparato a UNA celda 18650.
+# Con la corriente se calcula cuánto dura una carga: horas = capacidad actual (Ah) / corriente (A).
 # (Las pilas AA alcalinas de un control remoto NO son recargables: no tienen ciclos.)
 PROFILES: list[dict[str, Any]] = [
-    {"key": "laptop", "name": "Laptop (uso diario)", "cycles_per_day": 1.0},
-    {"key": "celular", "name": "Celular o power bank", "cycles_per_day": 1.0},
-    {"key": "dron", "name": "Dron (3 vuelos al día)", "cycles_per_day": 3.0},
-    {"key": "bicicleta", "name": "Bicicleta o patineta eléctrica", "cycles_per_day": 0.5},
-    {"key": "herramienta", "name": "Herramienta eléctrica (taladro)", "cycles_per_day": 0.3},
-    {"key": "linterna", "name": "Linterna recargable", "cycles_per_day": 0.1},
+    {"key": "laptop", "name": "Laptop (uso diario)", "cycles_per_day": 1.0, "current_a": 0.5},
+    {"key": "celular", "name": "Celular o power bank", "cycles_per_day": 1.0, "current_a": 1.0},
+    {"key": "dron", "name": "Dron (3 vuelos al día)", "cycles_per_day": 3.0, "current_a": 4.0},
+    {"key": "bicicleta", "name": "Bicicleta o patineta eléctrica", "cycles_per_day": 0.5, "current_a": 2.0},
+    {"key": "herramienta", "name": "Herramienta eléctrica (taladro)", "cycles_per_day": 0.3, "current_a": 5.0},
+    {"key": "linterna", "name": "Linterna recargable", "cycles_per_day": 0.1, "current_a": 0.5},
 ]
+# Uso continuo: descargar y recargar sin parar, como en el laboratorio de la NASA.
+DEFAULT_LAB_CURRENT_A = 2.0
+DEFAULT_CHARGE_HOURS = 3.0
+
+
+def _median_last(values, n: int = 5) -> float | None:
+    v = [float(x) for x in values if x is not None and np.isfinite(x)]
+    return float(np.median(v[-n:])) if v else None
 
 
 def _soh_series(predictions: list[dict[str, Any]], target: str, nominal: float) -> list[float | None]:
@@ -70,17 +79,41 @@ def _similar_fade(similar_cells: list[dict[str, Any]]) -> tuple[float | None, li
     return (float(np.median(rates)) if rates else None), used
 
 
-def _profiles(remaining: float) -> list[dict[str, Any]]:
+def _hours(capacity_ah: float | None, current_a: float) -> float | None:
+    return None if capacity_ah is None or current_a <= 0 else capacity_ah / current_a
+
+
+def _profiles(remaining: float, capacity_ah: float | None, lab: dict[str, Any]) -> list[dict[str, Any]]:
     out = []
-    for p in PROFILES:
+    continuous = dict(lab)
+    if continuous.get("cycle_hours"):
+        continuous["cycles_per_day"] = 24.0 / continuous["cycle_hours"]
+    for p in ([continuous] if continuous.get("cycles_per_day") else []) + PROFILES:
         days = remaining / p["cycles_per_day"]
-        out.append({**p, "days": round(days, 1), "years": round(days / 365.0, 2)})
+        h = _hours(capacity_ah, p["current_a"])
+        out.append({**p, "cycles_per_day": round(p["cycles_per_day"], 2), "days": round(days, 1),
+                    "years": round(days / 365.0, 2), "hours_per_charge": None if h is None else round(h, 2),
+                    "use_hours_per_day": None if h is None else round(h * p["cycles_per_day"], 2)})
     return out
 
 
+def _lab_profile(capacity_ah: float | None, current_a: float | None, charge_hours: float | None) -> dict[str, Any]:
+    current = current_a if current_a and current_a > 0 else DEFAULT_LAB_CURRENT_A
+    charge = charge_hours if charge_hours and charge_hours > 0 else DEFAULT_CHARGE_HOURS
+    discharge = _hours(capacity_ah, current)
+    return {"key": "continuo", "name": "Uso continuo sin parar (laboratorio)",
+            "current_a": round(current, 2), "charge_hours": round(charge, 2),
+            "discharge_hours": None if discharge is None else round(discharge, 2),
+            "cycle_hours": None if discharge is None else round(discharge + charge, 2)}
+
+
 def estimate(predictions: list[dict[str, Any]], target: str, similar_cells: list[dict[str, Any]],
-             nominal: float, eol_capacity: float) -> dict[str, Any] | None:
-    """Añade ``remaining_cycles`` a cada predicción y devuelve el bloque ``life_estimate``."""
+             nominal: float, eol_capacity: float, discharge_current_a: float | None = None,
+             charge_hours: float | None = None) -> dict[str, Any] | None:
+    """Añade ``remaining_cycles`` a cada predicción y devuelve el bloque ``life_estimate``.
+
+    ``discharge_current_a`` y ``charge_hours`` (medianas del CSV) definen el perfil de uso continuo.
+    """
     eol_soh = eol_capacity / nominal
     if target == "rul":
         # El modelo ya predice ciclos restantes: solo se convierten a días.
@@ -90,9 +123,11 @@ def estimate(predictions: list[dict[str, Any]], target: str, similar_cells: list
         if not last:
             return None
         remaining = float(np.median(last[-5:]))
+        lab = _lab_profile(None, discharge_current_a, charge_hours)
         return {"method": "predicción directa del modelo de RUL", "eol_soh": eol_soh, "soh_current": None,
-                "fade_per_cycle": None, "remaining_cycles": round(remaining, 1),
-                "past_end_of_life": remaining <= 0, "profiles": _profiles(remaining), "assumptions": _ASSUMPTIONS}
+                "capacity_current_ah": None, "fade_per_cycle": None, "remaining_cycles": round(remaining, 1),
+                "past_end_of_life": remaining <= 0, "continuous_use": lab,
+                "profiles": _profiles(remaining, None, lab), "assumptions": _ASSUMPTIONS}
 
     soh = _soh_series(predictions, target, nominal)
     cycles = [p.get("cycle") for p in predictions]
@@ -116,21 +151,27 @@ def estimate(predictions: list[dict[str, Any]], target: str, similar_cells: list
     ordered = [s for c, s in sorted(zip(cycles, soh), key=lambda t: (t[0] is None, t[0] or 0)) if s is not None]
     soh_now = float(np.median(ordered[-5:]))
     remaining = max((soh_now - eol_soh) / fade, 0.0)
+    capacity_now = soh_now * nominal
+    lab = _lab_profile(capacity_now, discharge_current_a, charge_hours)
     return {
         "method": method,
         "eol_soh": eol_soh,
         "soh_current": soh_now,
+        "capacity_current_ah": round(capacity_now, 3),
         "fade_per_cycle": fade,
         "fade_trend_csv": trend,
         "fade_similar_cells": similar,
         "remaining_cycles": round(remaining, 1),
         "past_end_of_life": soh_now < eol_soh,
-        "profiles": _profiles(remaining),
+        "continuous_use": lab,
+        "profiles": _profiles(remaining, capacity_now, lab),
         "assumptions": _ASSUMPTIONS,
     }
 
 
 _ASSUMPTIONS = ("Estimación orientativa: un ciclo es una descarga completa equivalente; las descargas parciales "
-                "cuentan como fracciones de ciclo. No incluye el envejecimiento por el paso del tiempo ni cambios de "
-                "temperatura o corriente respecto a los del CSV. Fin de vida = 70 % del SOH. Error típico ±25-50 %, y "
-                "tiende a ser optimista porque la degradación se acelera al final de la vida.")
+                "cuentan como fracciones de ciclo. Una carga dura capacidad actual ÷ corriente típica de cada uso; a "
+                "corrientes altas (dron, taladro) la celda entrega algo menos de capacidad y dura un poco menos. No "
+                "incluye el envejecimiento por el paso del tiempo ni cambios de temperatura o corriente respecto a los "
+                "del CSV. Fin de vida = 70 % del SOH. Error típico ±25-50 %, y tiende a ser optimista porque la "
+                "degradación se acelera al final de la vida.")

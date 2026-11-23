@@ -150,6 +150,14 @@ def test_vida_restante_en_dias(client):
     dias = {p["key"]: p["days"] for p in le["profiles"]}
     assert dias["dron"] < dias["laptop"] < dias["linterna"]
     assert dias["laptop"] == round(le["remaining_cycles"] / 1.0, 1)
+    # Duración de una carga y uso continuo (descarga a ~2 A + recarga CC-CV del CSV, ~3.7 h por ciclo).
+    perf = {p["key"]: p for p in le["profiles"]}
+    cu = le["continuous_use"]
+    assert le["profiles"][0]["key"] == "continuo" and 1.9 < cu["current_a"] < 2.1
+    assert abs(cu["cycle_hours"] - cu["discharge_hours"] - cu["charge_hours"]) < 0.02 and 2 < cu["cycle_hours"] < 6
+    assert abs(perf["laptop"]["hours_per_charge"] - le["capacity_current_ah"] / 0.5) < 0.01
+    assert perf["dron"]["hours_per_charge"] < 1 < perf["laptop"]["hours_per_charge"]
+    assert dias["continuo"] < dias["dron"]
     rc = [p["remaining_cycles"] for p in body["predictions"]]
     assert all(r is not None and r >= 0 for r in rc) and max(rc[:10]) >= rc[-1]
 

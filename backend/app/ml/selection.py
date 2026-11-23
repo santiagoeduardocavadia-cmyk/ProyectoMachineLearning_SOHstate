@@ -101,6 +101,19 @@ def similar_cells(record: dict[str, Any], df: pd.DataFrame, n: int = N_SIMILAR) 
     return sorted(out, key=lambda c: c["distance"])[:n]
 
 
+def _csv_median(df: pd.DataFrame, col: str) -> float | None:
+    if col not in df:
+        return None
+    v = pd.to_numeric(df[col], errors="coerce").dropna()
+    return float(v.median()) if len(v) else None
+
+
+def _charge_hours(df: pd.DataFrame) -> float | None:
+    """Duración típica de la recarga del CSV (fases CC + CV, en horas)."""
+    cc, cv = _csv_median(df, "cc_charge_time"), _csv_median(df, "cv_charge_time")
+    return None if cc is None else (cc + (cv or 0.0)) / 3600.0
+
+
 def predict_auto(df: pd.DataFrame, target: str, predict_frame: Callable[[str, pd.DataFrame], dict]) -> dict[str, Any]:
     candidates = rank(df, target)
     eligible = [c for c in candidates if c["eligible"]]
@@ -132,5 +145,7 @@ def predict_auto(df: pd.DataFrame, target: str, predict_frame: Callable[[str, pd
     result["life_estimate"] = life.estimate(
         result["predictions"], target, result["similar_cells"],
         nominal=float(ds_info.get("nominal_capacity_ah") or config.NOMINAL_CAPACITY_AH),
-        eol_capacity=float(ds_info.get("eol_capacity_ah") or config.EOL_CAPACITY_AH))
+        eol_capacity=float(ds_info.get("eol_capacity_ah") or config.EOL_CAPACITY_AH),
+        discharge_current_a=_csv_median(df, "discharge_current_a"),
+        charge_hours=_charge_hours(df))
     return result

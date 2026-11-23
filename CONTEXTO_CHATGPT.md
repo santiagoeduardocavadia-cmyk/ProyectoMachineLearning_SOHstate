@@ -466,14 +466,18 @@ elegido con `reason` y una tabla de `candidates` (nombre, dataset, estado de dom
   "method": "el mayor entre la tendencia del CSV (0.109 %/ciclo, 40 ciclos) y el ritmo de las celdas parecidas ...",
   "eol_soh": 0.7, "soh_current": 0.891, "fade_per_cycle": 0.00209,
   "fade_trend_csv": 0.00109, "fade_similar_cells": 0.00209,
-  "remaining_cycles": 91.1, "past_end_of_life": false,
-  "profiles": [ {"key": "laptop", "name": "Laptop (uso diario)", "cycles_per_day": 1.0, "days": 91.1, "years": 0.25},
-                {"key": "dron", "name": "Dron (3 vuelos al día)", "cycles_per_day": 3.0, "days": 30.4, "years": 0.08}, ... ],
+  "remaining_cycles": 91.1, "past_end_of_life": false, "capacity_current_ah": 1.781,
+  "continuous_use": {"key": "continuo", "current_a": 1.99, "discharge_hours": 0.9, "charge_hours": 2.76, "cycle_hours": 3.66},
+  "profiles": [ {"key": "continuo", "name": "Uso continuo sin parar (laboratorio)", "cycles_per_day": 6.56, "days": 13.9, ...},
+                {"key": "laptop", "name": "Laptop (uso diario)", "cycles_per_day": 1.0, "current_a": 0.5, "days": 91.1,
+                 "years": 0.25, "hours_per_charge": 3.56, "use_hours_per_day": 3.56}, ... ],
   "assumptions": "Estimación orientativa: ..."
 }
 ```
 - `remaining_cycles` = (SOH − 70 %) / pérdida de SOH por ciclo. La pérdida es la mayor entre la tendencia del SOH predicho
   en el CSV y la de las 3 celdas parecidas. Ver `backend/app/ml/life.py` y `docs/CONCLUSIONES.md`.
+- `hours_per_charge` = capacidad actual ÷ `current_a` (corriente típica por celda de cada uso). `continuous_use` es un ciclo
+  completo sin parar: descarga a la corriente del CSV más la recarga medida en el CSV (`cc_charge_time + cv_charge_time`).
 - `life_estimate` puede ser `null` si no hay ritmo de degradación disponible. Con `target = "rul"` se usa la RUL predicha.
 - **UI (ya implementada en `frontend/src/Predict.jsx`):** tarjeta "Vida restante" con selector de uso, tabla de perfiles
   y columnas "Ciclos restantes" y "Días de vida (perfil)" en la tabla de predicciones.
@@ -553,4 +557,4 @@ Commits pequeños y frecuentes, en español, y que el proyecto corra después de
 | 1.1.1 | 2026-11-20 | `/predict/csv` deriva el SOH real de `capacity_ah` si falta la columna `soh` |
 | 1.2.0 | 2026-11-23 | Dataset `nasa_multitemp`, características `ambient_temperature` y `discharge_current_a`, `test_temperatures`, `metrics.per_temperature`, CV por celda física, `domain` en inferencia y `POST /predict/auto` |
 | 1.3.0 | 2026-11-23 | `similar_cells` y `selection.similar_cells_summary` en `POST /predict/auto` (pestaña "Predecir") |
-| 1.4.0 | 2026-11-23 | `life_estimate` y `remaining_cycles` en `POST /predict/auto` (vida restante en ciclos y días por perfil de uso) |
+| 1.4.0 | 2026-11-23 | `life_estimate` y `remaining_cycles` en `POST /predict/auto` (vida restante en ciclos y días por perfil de uso, duración de una carga y del ciclo continuo) |

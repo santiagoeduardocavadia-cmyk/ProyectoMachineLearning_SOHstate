@@ -69,13 +69,21 @@ faltan para llegar al 70 % (fin de vida, el criterio de la NASA). Por prudencia,
 del propio CSV y el ritmo de las 3 celdas parecidas, que ya vivieron su curva completa. Los ciclos se pasan a días con un uso
 típico:
 
-| Uso | Ciclos completos por día |
-|---|---|
-| Dron (3 vuelos al día) | 3 |
-| Laptop, celular o power bank | 1 |
-| Bicicleta o patineta eléctrica | 0.5 |
-| Herramienta eléctrica (taladro) | 0.3 |
-| Linterna recargable | 0.1 |
+| Uso | Corriente por celda | Una carga dura (celda de 1.78 Ah) | Ciclos por día |
+|---|---|---|---|
+| Uso continuo sin parar (laboratorio) | la del CSV (2 A) | 54 min de descarga + 2 h 46 min de recarga = **3 h 40 min por ciclo** | ≈ 6.6 |
+| Dron (3 vuelos al día) | 4 A | 27 min | 3 |
+| Laptop | 0.5 A | 3 h 34 min | 1 |
+| Celular o power bank | 1 A | 1 h 47 min | 1 |
+| Bicicleta o patineta eléctrica | 2 A | 53 min | 0.5 |
+| Herramienta eléctrica (taladro) | 5 A | 22 min | 0.3 |
+| Linterna recargable | 0.5 A | 3 h 34 min | 0.1 |
+
+**Cuánto dura un ciclo.** Una carga dura capacidad actual ÷ corriente: una celda con 1.78 Ah a 0.5 A dura unas 3.6 h.
+En **uso constante** (descargar y recargar sin parar, como en el laboratorio) el ciclo completo dura la descarga más la
+recarga, medidas en el propio CSV (fases CC y CV de la carga). Para B0006 son ≈ 3 h 40 min por ciclo, ≈ 6.6 ciclos al día,
+así que con sus 91 ciclos restantes le quedarían ≈ 14 días de uso continuo. Las corrientes de cada aparato son típicas por
+celda 18650 y son un supuesto.
 
 Las pilas AA del control remoto del televisor no aparecen porque son alcalinas y no recargables: no tienen ciclos de carga.
 Las celdas de la NASA son Li-ion 18650, como las de laptops, power banks, drones, bicicletas eléctricas y linternas.
@@ -84,7 +92,7 @@ Las celdas de la NASA son Li-ion 18650, como las de laptops, power banks, drones
 - Con las 6 celdas multitemperatura que llegan al fin de vida, cortando la curva a la mitad, el error mediano fue de unos
   12 ciclos (≈ 24 %).
 - Ejemplo: B0006 con sus primeros 40 ciclos estima **91 ciclos** restantes; en la realidad le quedaban **69** (llegó al 70 % en
-  el ciclo 109). Con un dron son ≈ 30 días; con una laptop, ≈ 3 meses.
+  el ciclo 109). Con un dron son ≈ 30 días; con una laptop, ≈ 3 meses; sin parar, ≈ 14 días.
 - La estimación tiende a ser **optimista**: las celdas se degradan más rápido al final de la vida (la "rodilla"). Por eso se
   usa el ritmo mayor y se dice el margen (±25–50 %).
 

@@ -160,6 +160,33 @@ export function lifeText(days) {
   return num(days / 365, 1) + " años";
 }
 
+export function hoursText(hours) {
+  if (hours == null || !Number.isFinite(hours)) return "—";
+  const total = Math.round(hours * 60);
+  if (total < 60) return total + " min";
+  const h = Math.floor(total / 60);
+  const m = total % 60;
+  return m ? `${h} h ${m} min` : `${h} h`;
+}
+
+function ContinuousUse({ life }) {
+  const c = life.continuous_use;
+  if (!c?.cycle_hours) return null;
+  const days = life.profiles.find((p) => p.key === "continuo")?.days;
+  return (
+    <p className="life-continuous">
+      <strong>Un ciclo completo a uso constante dura ≈ {hoursText(c.cycle_hours)}</strong>
+      : {hoursText(c.discharge_hours)} de descarga a {num(c.current_a, 1)} A
+      más {hoursText(c.charge_hours)} de recarga (medidos en tu CSV). Usándola
+      sin parar son ≈ {num(24 / c.cycle_hours, 1)} ciclos al día
+      {!life.past_end_of_life && days != null && (
+        <> y le quedarían ≈ {lifeText(days)}</>
+      )}
+      .
+    </p>
+  );
+}
+
 function LifeEstimate({ life, profileKey, setProfileKey }) {
   if (!life) return null;
   const profile =
@@ -198,6 +225,13 @@ function LifeEstimate({ life, profileKey, setProfileKey }) {
                 {num(profile.cycles_per_day)} ciclos/día = {num(profile.days, 0)}{" "}
                 días
               </small>
+              {profile.hours_per_charge != null && (
+                <small>
+                  Cada carga dura ≈ {hoursText(profile.hours_per_charge)} (
+                  {num(profile.current_a, 1)} A por celda), unas{" "}
+                  {hoursText(profile.use_hours_per_day)} de uso al día.
+                </small>
+              )}
             </p>
           )}
           <dl>
@@ -205,6 +239,12 @@ function LifeEstimate({ life, profileKey, setProfileKey }) {
               <div>
                 <dt>SOH actual (predicho)</dt>
                 <dd>{measure(life.soh_current, "soh")}</dd>
+              </div>
+            )}
+            {life.capacity_current_ah != null && (
+              <div>
+                <dt>Capacidad actual</dt>
+                <dd>{num(life.capacity_current_ah, 2)} Ah</dd>
               </div>
             )}
             {life.fade_per_cycle != null && (
@@ -221,15 +261,25 @@ function LifeEstimate({ life, profileKey, setProfileKey }) {
         </div>
         <Table
           label="Vida restante por tipo de uso"
-          headers={["Uso", "Ciclos por día", "Días", "Equivale a"]}
+          headers={[
+            "Uso",
+            "Corriente",
+            "Una carga dura",
+            "Uso al día",
+            "Ciclos por día",
+            "Vida restante",
+          ]}
           rows={life.profiles.map((p) => [
             p.key === profile.key ? <strong>{p.name}</strong> : p.name,
+            num(p.current_a, 1) + " A",
+            hoursText(p.hours_per_charge),
+            hoursText(p.use_hours_per_day),
             num(p.cycles_per_day),
-            num(p.days, 0),
             lifeText(p.days),
           ])}
         />
       </div>
+      <ContinuousUse life={life} />
       <p className="muted">
         Cómo se calcula: ciclos restantes = (SOH actual − 70 %) ÷ pérdida por
         ciclo, usando {life.method}.
