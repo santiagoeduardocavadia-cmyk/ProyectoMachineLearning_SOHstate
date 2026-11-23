@@ -133,3 +133,33 @@ def test_celdas_similares_en_seleccion_automatica(client):
         assert csv not in {c["battery_id"] for c in cells}  # la celda de test no está en entrenamiento
         assert all(abs(c["ambient_temperature"] - temp) <= 3 for c in cells[:3])
         assert cells[0]["battery_id"] in body["selection"]["similar_cells_summary"]
+
+
+def test_vida_restante_en_dias(client):
+    from app.ml import life
+
+    _train(client, name="multi", dataset_id="nasa_multitemp", test_batteries=["B0006", "B0031", "B0047"])
+    df = get_dataset("nasa_multitemp")
+    sana = df[(df["battery_id"] == "B0006") & (df["cycle"] <= 40)].drop(columns=["soh", "rul", "eol_cycle"])
+    body = client.post("/api/v1/predict/auto", files={"file": ("b.csv", sana.to_csv(index=False).encode(), "text/csv")},
+                       data={"target": "soh"}).json()
+    le = body["life_estimate"]
+    assert le["eol_soh"] == 0.7 and not le["past_end_of_life"]
+    assert le["fade_per_cycle"] == max(le["fade_trend_csv"], le["fade_similar_cells"])
+    assert 30 < le["remaining_cycles"] < 200  # real: 69 ciclos (EOL en el ciclo 109)
+    dias = {p["key"]: p["days"] for p in le["profiles"]}
+    assert dias["dron"] < dias["laptop"] < dias["linterna"]
+    assert dias["laptop"] == round(le["remaining_cycles"] / 1.0, 1)
+    rc = [p["remaining_cycles"] for p in body["predictions"]]
+    assert all(r is not None and r >= 0 for r in rc) and max(rc[:10]) >= rc[-1]
+
+    # Celda que ya pasó el fin de vida: 0 ciclos restantes.
+    vieja = df[df["battery_id"] == "B0006"].drop(columns=["soh", "rul", "eol_cycle"])
+    le2 = client.post("/api/v1/predict/auto", files={"file": ("b.csv", vieja.to_csv(index=False).encode(), "text/csv")},
+                      data={"target": "soh"}).json()["life_estimate"]
+    assert le2["past_end_of_life"] and le2["remaining_cycles"] == 0
+
+    # Sin columna cycle: se usa el ritmo de las celdas parecidas.
+    est = life.estimate([{"prediction": 0.9}], "soh", [{"battery_id": "X", "soh_initial": 0.95, "soh_final": 0.75,
+                                                         "n_cycles": 101}], nominal=2.0, eol_capacity=1.4)
+    assert est["fade_trend_csv"] is None and abs(est["remaining_cycles"] - 100) < 1e-6

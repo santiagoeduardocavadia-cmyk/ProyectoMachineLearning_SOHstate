@@ -34,7 +34,7 @@ EOL_CAPACITY_AH = 1.4          # fin de vida: 30 % de pérdida de capacidad
 DISCHARGE_CURRENT_A = 2.0      # descarga en corriente constante
 
 # Versión del contrato HTTP. Cambios incompatibles => nuevo prefijo (/api/v2).
-API_VERSION = "1.3.0"
+API_VERSION = "1.4.0"
 API_PREFIX = "/api/v1"
 
 # Orígenes permitidos para CORS (separados por coma). "*" = cualquiera (desarrollo).

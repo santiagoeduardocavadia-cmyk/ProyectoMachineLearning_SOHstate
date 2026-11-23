@@ -18,7 +18,8 @@ import pandas as pd
 
 from app.data.dataset import get_dataset
 from app.errors import AppError
-from app.ml import domain, inference, store
+from app import config
+from app.ml import domain, inference, life, store
 
 TIE_TOLERANCE = 0.10
 CONDITION_PENALTY = 2.0
@@ -127,4 +128,9 @@ def predict_auto(df: pd.DataFrame, target: str, predict_frame: Callable[[str, pd
         result["selection"]["similar_cells_summary"] = (
             f"Tu batería se parece más a {best['battery_id']}{t} (y a "
             f"{', '.join(c['battery_id'] for c in result['similar_cells'][1:3])}) entre las celdas de entrenamiento.")
+    ds_info = record.get("dataset") or {}
+    result["life_estimate"] = life.estimate(
+        result["predictions"], target, result["similar_cells"],
+        nominal=float(ds_info.get("nominal_capacity_ah") or config.NOMINAL_CAPACITY_AH),
+        eol_capacity=float(ds_info.get("eol_capacity_ah") or config.EOL_CAPACITY_AH))
     return result
