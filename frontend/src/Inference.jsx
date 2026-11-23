@@ -70,7 +70,12 @@ export function Candidates({ items, target, showHeading = true }) {
   );
 }
 
-export function PredictionTable({ result, children, showReliability = false }) {
+export function PredictionTable({
+  result,
+  children,
+  showReliability = false,
+  extraColumns = [],
+}) {
   const [page, setPage] = useState(0);
   const { predictions, target, domain } = result;
   const showDomain =
@@ -83,6 +88,7 @@ export function PredictionTable({ result, children, showReliability = false }) {
   if (target === "capacity") headers.push("SOH estimado (%)");
   if (target !== "rul") headers.push("Estado");
   if (showDomain) headers.push("Fiabilidad");
+  extraColumns.forEach((c) => headers.push(c.header));
   const rows = predictions.slice(start, start + 25).map((p, i) => {
     const row = [
       p.battery_id
@@ -101,6 +107,7 @@ export function PredictionTable({ result, children, showReliability = false }) {
         </span>,
       );
     if (showDomain) row.push(p.domain_status);
+    extraColumns.forEach((c) => row.push(c.cell(p)));
     return row;
   });
   return (
