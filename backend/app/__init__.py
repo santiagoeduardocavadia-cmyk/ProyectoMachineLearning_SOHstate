@@ -1,3 +1,3 @@
 """Backend de predicción de SOH y RUL de baterías de litio (NASA Battery Dataset)."""
 
-__version__ = "1.3.0"
+__version__ = "1.4.0"

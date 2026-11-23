@@ -102,6 +102,11 @@ Desde v1.2.0:
 | SOH – Gradient Boosting, 43 °C nunca vista | 0.046 | — | las 7 celdas a 43-44 °C |
 
 Comparativa completa, con y sin data augmentation: [backend/docs/GENERALIZACION.md](backend/docs/GENERALIZACION.md).
+
+**Vida restante (v1.4.0).** En la pestaña *Predecir* la web estima cuántos ciclos le quedan a la celda hasta el 70 % de SOH
+y los convierte en días según el uso (laptop, celular, dron, bicicleta, taladro, linterna). Error típico ±25-50 %.
+Conclusiones para la sustentación (¿sirvió el data augmentation?, cómo leer la tabla, limitaciones):
+[docs/CONCLUSIONES.md](docs/CONCLUSIONES.md).
 Para regenerar: `python -m scripts.prepare_dataset --multitemp`, `python -m scripts.run_reference_experiment` y
 `python -m scripts.evaluate_generalization`.
 

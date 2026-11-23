@@ -46,6 +46,18 @@ function Method() {
             "Fin de vida observado",
             "El umbral del conjunto NASA es 1,4 Ah. B0007 terminó el ensayo por encima del umbral, así que se desconoce cuántos ciclos le quedaban. Se excluye al entrenar y evaluar RUL.",
           ],
+          [
+            "Otras temperaturas y corrientes",
+            "Un modelo entrenado solo a 24 °C falla con celdas a 4 °C o 43 °C. Por eso hay un dataset con 32 celdas a 4, 24 y 43 °C, la temperatura y la corriente entran como características, y cada predicción indica si los datos están dentro, en el borde o fuera de lo que el modelo conoce.",
+          ],
+          [
+            "Data augmentation",
+            "Las copias con ruido, interpolación y mezcla de celdas mejoran poco dentro de un mismo dataset y no ayudan a generalizar a otras condiciones: solo recombinan lo que ya existe. Lo que reduce el error es entrenar con celdas reales de esas condiciones.",
+          ],
+          [
+            "Vida restante en días",
+            "Ciclos restantes = (SOH actual − 70 %) ÷ pérdida de SOH por ciclo, tomando el ritmo mayor entre la tendencia del CSV y el de las celdas parecidas. Los ciclos se convierten en días con perfiles de uso de celdas Li-ion recargables (laptop, dron, linterna…). Es una estimación orientativa.",
+          ],
         ].map(([title, text]) => (
           <section className="panel" key={title}>
             <h2>{title}</h2>

@@ -749,6 +749,34 @@ footer {
 .prediction-summary .domain-notice {
   margin-bottom: 0;
 }
+.life-grid {
+  display: grid;
+  grid-template-columns: minmax(16rem, 1fr) minmax(0, 1.3fr);
+  gap: 1.5rem;
+  align-items: start;
+}
+.life-big {
+  margin: 1rem 0;
+  font-size: 2.2rem;
+  font-weight: 700;
+  line-height: 1.1;
+  color: var(--green);
+}
+.life-big small {
+  display: block;
+  margin-top: 0.4rem;
+  font-size: 0.85rem;
+  font-weight: 400;
+  color: var(--muted);
+}
+.life-big.life-dead {
+  font-size: 1.6rem;
+  color: #882b25;
+}
+.life-panel > small {
+  display: block;
+  color: var(--muted);
+}
 .prediction-candidates summary {
   cursor: pointer;
   font-weight: 650;
@@ -758,10 +786,27 @@ footer {
 }
 @media (max-width: 760px) {
   .prediction-upload .flat,
-  .prediction-summary {
+  .prediction-summary,
+  .life-grid {
     grid-template-columns: 1fr;
   }
   .prediction-summary {
     gap: 0;
   }
+}
+
+.life-big small + small {
+  margin-top: 0.25rem;
+}
+
+.life-continuous {
+  margin: 1rem 0 0.5rem;
+  padding: 0.75rem 1rem;
+  border-left: 4px solid var(--green);
+  background: color-mix(in srgb, var(--green) 8%, transparent);
+  border-radius: 6px;
+}
+
+.life-panel td:not(:first-child) {
+  white-space: nowrap;
 }

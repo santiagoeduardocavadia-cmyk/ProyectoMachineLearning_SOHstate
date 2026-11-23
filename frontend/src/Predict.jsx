@@ -1,4 +1,4 @@
-import React from "react";
+import React, { useState } from "react";
 import {
   Candidates,
   DomainNotice,
@@ -152,17 +152,190 @@ function Comparison({ predictions, target }) {
   );
 }
 
+export function lifeText(days) {
+  if (days == null || !Number.isFinite(days)) return "—";
+  if (days <= 0) return "0 días";
+  if (days < 60) return num(days, 0) + " días";
+  if (days < 730) return num(days / 30.4, 1) + " meses";
+  return num(days / 365, 1) + " años";
+}
+
+export function hoursText(hours) {
+  if (hours == null || !Number.isFinite(hours)) return "—";
+  const total = Math.round(hours * 60);
+  if (total < 60) return total + " min";
+  const h = Math.floor(total / 60);
+  const m = total % 60;
+  return m ? `${h} h ${m} min` : `${h} h`;
+}
+
+function ContinuousUse({ life }) {
+  const c = life.continuous_use;
+  if (!c?.cycle_hours) return null;
+  const days = life.profiles.find((p) => p.key === "continuo")?.days;
+  return (
+    <p className="life-continuous">
+      <strong>Un ciclo completo a uso constante dura ≈ {hoursText(c.cycle_hours)}</strong>
+      : {hoursText(c.discharge_hours)} de descarga a {num(c.current_a, 1)} A
+      más {hoursText(c.charge_hours)} de recarga (medidos en tu CSV). Usándola
+      sin parar son ≈ {num(24 / c.cycle_hours, 1)} ciclos al día
+      {!life.past_end_of_life && days != null && (
+        <> y le quedarían ≈ {lifeText(days)}</>
+      )}
+      .
+    </p>
+  );
+}
+
+function LifeEstimate({ life, profileKey, setProfileKey }) {
+  if (!life) return null;
+  const profile =
+    life.profiles.find((p) => p.key === profileKey) || life.profiles[0];
+  return (
+    <section className="panel life-panel">
+      <h2>Vida restante</h2>
+      <div className="life-grid">
+        <div>
+          <label>
+            Uso de la batería
+            <select
+              value={profile.key}
+              onChange={(e) => setProfileKey(e.target.value)}
+            >
+              {life.profiles.map((p) => (
+                <option key={p.key} value={p.key}>
+                  {p.name} · {num(p.cycles_per_day)} ciclos/día
+                </option>
+              ))}
+            </select>
+          </label>
+          {life.past_end_of_life ? (
+            <p className="life-big life-dead">
+              Ya pasó el fin de vida
+              <small>
+                SOH actual {measure(life.soh_current, "soh")}, por debajo del{" "}
+                {num(life.eol_soh * 100, 0)} %. Se recomienda reemplazarla.
+              </small>
+            </p>
+          ) : (
+            <p className="life-big">
+              ≈ {lifeText(profile.days)}
+              <small>
+                {num(life.remaining_cycles, 0)} ciclos restantes ÷{" "}
+                {num(profile.cycles_per_day)} ciclos/día = {num(profile.days, 0)}{" "}
+                días
+              </small>
+              {profile.hours_per_charge != null && (
+                <small>
+                  Cada carga dura ≈ {hoursText(profile.hours_per_charge)} (
+                  {num(profile.current_a, 1)} A por celda), unas{" "}
+                  {hoursText(profile.use_hours_per_day)} de uso al día.
+                </small>
+              )}
+            </p>
+          )}
+          <dl>
+            {life.soh_current != null && (
+              <div>
+                <dt>SOH actual (predicho)</dt>
+                <dd>{measure(life.soh_current, "soh")}</dd>
+              </div>
+            )}
+            {life.capacity_current_ah != null && (
+              <div>
+                <dt>Capacidad actual</dt>
+                <dd>{num(life.capacity_current_ah, 2)} Ah</dd>
+              </div>
+            )}
+            {life.fade_per_cycle != null && (
+              <div>
+                <dt>Pérdida de SOH por ciclo</dt>
+                <dd>{num(life.fade_per_cycle * 100, 3)} %</dd>
+              </div>
+            )}
+            <div>
+              <dt>Fin de vida</dt>
+              <dd>SOH {num(life.eol_soh * 100, 0)} %</dd>
+            </div>
+          </dl>
+        </div>
+        <Table
+          label="Vida restante por tipo de uso"
+          headers={[
+            "Uso",
+            "Corriente",
+            "Una carga dura",
+            "Uso al día",
+            "Ciclos por día",
+            "Vida restante",
+          ]}
+          rows={life.profiles.map((p) => [
+            p.key === profile.key ? <strong>{p.name}</strong> : p.name,
+            num(p.current_a, 1) + " A",
+            hoursText(p.hours_per_charge),
+            hoursText(p.use_hours_per_day),
+            num(p.cycles_per_day),
+            lifeText(p.days),
+          ])}
+        />
+      </div>
+      <ContinuousUse life={life} />
+      <p className="muted">
+        Cómo se calcula: ciclos restantes = (SOH actual − 70 %) ÷ pérdida por
+        ciclo, usando {life.method}.
+      </p>
+      <small>{life.assumptions}</small>
+    </section>
+  );
+}
+
 function Results({ result }) {
+  const [profileKey, setProfileKey] = useState("laptop");
+  const life = result.life_estimate;
+  const profile =
+    life?.profiles.find((p) => p.key === profileKey) || life?.profiles[0];
+  const extraColumns =
+    life && profile
+      ? [
+          {
+            header: "Ciclos restantes",
+            cell: (p) => num(p.remaining_cycles, 0),
+          },
+          {
+            header: "Días de vida (" + profile.name.split(" (")[0] + ")",
+            cell: (p) =>
+              p.remaining_cycles == null
+                ? "—"
+                : num(p.remaining_cycles / profile.cycles_per_day, 0),
+          },
+        ]
+      : [];
   return (
     <>
       <Summary result={result} />
       <Warnings
         items={result.warnings?.filter((w) => w !== result.domain?.message)}
       />
+      <LifeEstimate
+        life={life}
+        profileKey={profileKey}
+        setProfileKey={setProfileKey}
+      />
       <SimilarCells result={result} />
       <Comparison predictions={result.predictions} target={result.target} />
       <section className="panel">
-        <PredictionTable result={result} showReliability />
+        <PredictionTable
+          result={result}
+          showReliability
+          extraColumns={extraColumns}
+        >
+          <p className="muted">
+            Cada fila es un ciclo de carga y descarga de la batería, en orden de
+            tiempo: al avanzar de página la celda envejece y su estado pasa de
+            bueno (SOH ≥ 85 %) a degradado y a fin de vida (SOH &lt; 70 %).
+            "Días de vida" usa el perfil elegido en Vida restante.
+          </p>
+        </PredictionTable>
       </section>
       <details className="panel prediction-candidates">
         <summary>Modelos considerados</summary>
